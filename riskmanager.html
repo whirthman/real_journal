@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ultimate Trading Risk Management</title>
 <style>
@@ -65,7 +65,7 @@ button:hover {
 }
 form {
   display: grid;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 input, select, button {
   padding: 0.5rem;
@@ -78,36 +78,86 @@ input, select, button {
   width: 100%;
   border-collapse: collapse;
   margin-top: 1rem;
-  overflow-x: auto;
-  display: block;
+  table-layout: fixed; /* help align columns */
+  border: 1px solid #ddd;
+  display: block;            /* enable horizontal scrolling */
+  overflow-x: hidden;         /* allow horizontal scroll on small screens */
 }
-.result-table th, .result-table td {
+
+/* Keep header and body as blocks so tbody can scroll while header stays visible */
+.result-table thead,
+.result-table tbody {
+  display: block;
+  width: 100%;
+}
+
+/* Rows behave like tables so columns align; fixed layout ensures consistent widths */
+.result-table thead tr,
+.result-table tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+/* limit tbody height and enable vertical scroll inside it (if desired) */
+.result-table tbody {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+/* sticky header */
+.result-table thead th {
+  background-color: #eee;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.5rem;
+}
+
+/* cells: allow wrapping on narrow screens but keep ellipsis on wide screens */
+.result-table th,
+.result-table td {
   border: 1px solid #ccc;
   padding: 0.5rem;
   text-align: center;
+  white-space: nowrap;       /* default: prevent breaking on desktop */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+  min-width: 80px;           /* ensure reasonable column width and enable horizontal scroll */
+  word-break: normal;
 }
-.result-table th {
-  cursor: pointer;
-  background-color: #eee;
+
+/* Ensure the actions column has fixed width and visible overflow so buttons are never clipped */
+.result-table th:last-child,
+.result-table td:last-child {
+  width: 160px;
+  white-space: nowrap;
+  overflow: visible;
 }
-.delete-btn {
-  background-color: red;
-  color: white;
-}
-.export-btn {
-  background-color: #2a7a2a;
-  color: white;
-  margin-top: 1rem;
-}
-.search-input, .risk-filter {
-  width: 200px;
-  padding: 0.5rem;
-  margin-top: 1rem;
-  margin-right: 0.5rem;
-}
+
+/* MOBILE: allow wrapping so content is visible and rows expand vertically.
+   Horizontal scroll remains available on the table container. */
 @media (max-width: 700px){
-  .result-table td, .result-table th{
-    font-size: 12px;
+  .result-table thead tr,
+  .result-table tbody tr {
+    /* keep table-layout fixed for alignment, but let cells wrap */
+    table-layout: auto;
+  }
+
+  .result-table th,
+  .result-table td {
+    white-space: normal;       /* allow wrapping */
+    word-break: break-word;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 13px;
+    min-width: 120px;          /* keep some minimum to still allow horizontal scroll when needed */
+  }
+
+  .result-table th:last-child,
+  .result-table td:last-child {
+    width: 160px;
   }
 }
 .quote-box {
@@ -119,26 +169,35 @@ input, select, button {
   text-align: center;
   font-style: italic;
 }
+.controls-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;}
+.small { width:120px; }
 </style>
 </head>
 <body>
 <header>Ultimate Trading Risk Management</header>
 <main>
 <div class="quote-box" id="quoteBox"></div>
-<button id="openModal">New Trade Entry</button>
-<input type="text" class="search-input" id="searchInput" placeholder="Search instrument...">
-<select class="risk-filter" id="riskFilter">
-  <option value="">Filter by Risk %</option>
-  <option value="low">Low (≤2%)</option>
-  <option value="medium">Medium (2-5%)</option>
-  <option value="high">High (>5%)</option>
-</select>
-<button id="exportCSV" class="export-btn">Export History to CSV</button>
+
+<div class="controls-row">
+  <button id="openModal">New Trade Entry</button>
+  <input type="file" id="csvImport" style="display:none" accept=".csv">
+  <button id="importCSV">Import CSV</button>
+  <button id="exportCSV" class="export-btn">Export History to CSV</button>
+  <button id="clearAll" style="background:#b91c1c;color:white">Clear All</button>
+  <input type="text" class="search-input" id="searchInput" placeholder="Search instrument...">
+  <select class="risk-filter" id="riskFilter">
+    <option value="">Filter by Risk %</option>
+    <option value="low">Low (≤2%)</option>
+    <option value="medium">Medium (2-5%)</option>
+    <option value="high">High (>5%)</option>
+  </select>
+</div>
 
 <div id="modal" class="modal">
   <div class="modal-content">
     <span class="close">&times;</span>
     <form id="tradeForm">
+      <input type="hidden" id="editIndex" value="">
       <label for="market">Market Type</label>
       <select id="market" required>
         <option value="">Select Market</option>
@@ -153,19 +212,28 @@ input, select, button {
       </select>
 
       <label for="equity">Total Equity (USD)</label>
-      <input type="number" id="equity" min="1" step="0.01" required>
+      <input type="number" id="equity" min="0.01" step="0.01" required>
 
-      <label for="riskPercent">Risk %</label>
-      <input type="number" id="riskPercent" min="0.1" max="100" step="0.01" required>
+      <label for="calcMode">Calculation Mode</label>
+      <select id="calcMode" required>
+        <option value="rr">Risk : Reward (enter Risk % + R:R)</option>
+        <option value="exit">By Exit Price (enter Exit Price and Risk %)</option>
+      </select>
+
+      <label for="riskPercent">Risk % (percent of equity)</label>
+      <input type="number" id="riskPercent" min="0.01" max="100" step="0.01" value="1">
 
       <label for="entryPrice">Entry Price</label>
-      <input type="number" id="entryPrice" step="0.0001" required>
+      <input type="number" id="entryPrice" step="0.0000001" required>
 
       <label for="stopPrice">Stop Loss Price</label>
-      <input type="number" id="stopPrice" step="0.0001" required>
+      <input type="number" id="stopPrice" step="0.0000001" required>
 
-      <label for="rrRatio">Risk:Reward Ratio (optional)</label>
-      <input type="number" id="rrRatio" min="0.1" step="0.1">
+      <label for="rrRatio">Risk:Reward (R:R) — used when mode = R:R</label>
+      <input type="number" id="rrRatio" min="0.01" step="0.01" placeholder="e.g. 2 for 1:2">
+
+      <label for="exitPrice">Exit / Take Profit Price — used when mode = By Exit Price</label>
+      <input type="number" id="exitPrice" step="0.0000001" placeholder="Enter TP when using Exit Price mode">
 
       <label for="direction">Trade Direction</label>
       <select id="direction" required>
@@ -174,7 +242,10 @@ input, select, button {
         <option value="short">Short / Sell</option>
       </select>
 
-      <button type="submit">Calculate Risk & Lot</button>
+      <div style="display:flex; gap:8px;">
+        <button type="submit" id="submitBtn">Calculate & Save</button>
+        <button type="button" id="calcOnly" style="background:#6b7280;color:white">Calculate Only</button>
+      </div>
     </form>
   </div>
 </div>
@@ -190,10 +261,11 @@ input, select, button {
       <th data-sort="riskPercent">Risk %</th>
       <th data-sort="entryPrice">Entry</th>
       <th data-sort="stopPrice">Stop</th>
-      <th data-sort="lotSize">Lot Size</th>
+      <th data-sort="rrRatio">R:R</th>
       <th data-sort="tpPrice">TP</th>
+      <th data-sort="lotSize">Lot Size</th>
       <th data-sort="potentialProfit">Potential Profit</th>
-      <th>Delete</th>
+      <th>Actions</th>
     </tr>
   </thead>
   <tbody id="results"></tbody>
@@ -220,9 +292,18 @@ setInterval(showQuote, 10000);
 const modal = document.getElementById("modal");
 const btn = document.getElementById("openModal");
 const span = document.getElementsByClassName("close")[0];
-btn.onclick = ()=> modal.style.display="block";
-span.onclick = ()=> modal.style.display="none";
-window.onclick = (e)=> { if(e.target==modal) modal.style.display="none"; }
+btn.onclick = ()=> openForm();
+span.onclick = ()=> closeForm();
+window.onclick = (e)=> { if(e.target==modal) closeForm(); }
+
+function openForm(editIdx=null){
+  document.getElementById('tradeForm').reset();
+  document.getElementById('editIndex').value = editIdx !== null ? editIdx : '';
+  if(!editIdx) document.getElementById('riskPercent').value = 1;
+  modal.style.display="block";
+  toggleCalcMode();
+}
+function closeForm(){ modal.style.display="none"; }
 
 // -------------------- Instruments -------------------
 const instruments = {
@@ -257,83 +338,286 @@ function renderTable(filterRisk=null){
       if(filterRisk==='high' && res.riskPercent<=5) return;
     }
     const tr = document.createElement("tr");
-    // color row based on risk
     if(res.riskPercent <=2) tr.style.backgroundColor="#c8e6c9";
     else if(res.riskPercent<=5) tr.style.backgroundColor="#fff9c4";
     else tr.style.backgroundColor="#ffcdd2";
+
     tr.innerHTML=`
       <td>${res.timestamp}</td>
       <td>${res.market}</td>
       <td>${res.instrument}</td>
       <td>${res.direction}</td>
-      <td>${res.equity.toFixed(2)}</td>
-      <td>${res.riskPercent}</td>
+      <td>${Number(res.equity).toFixed(2)}</td>
+      <td>${Number(res.riskPercent).toFixed(2)}</td>
       <td>${res.entryPrice}</td>
       <td>${res.stopPrice}</td>
-      <td>${res.lotSize.toFixed(4)}</td>
-      <td>${res.tpPrice?res.tpPrice.toFixed(4):''}</td>
-      <td>${res.potentialProfit?res.potentialProfit.toFixed(2):''}</td>
-      <td><button class="delete-btn" data-index="${index}">X</button></td>
+      <td>${res.rrRatio? Number(res.rrRatio).toFixed(2) : ''}</td>
+      <td>${res.tpPrice? Number(res.tpPrice).toFixed(6) : ''}</td>
+      <td>${Number(res.lotSize).toFixed(6)}</td>
+      <td>${res.potentialProfit? Number(res.potentialProfit).toFixed(2) : ''}</td>
+      <td>
+        <button class="edit-btn" data-index="${index}">Edit</button>
+        <button class="delete-btn" data-index="${index}">X</button>
+      </td>
     `;
     resultsBody.appendChild(tr);
   });
 }
 renderTable();
 
+// -------------------- Utilities -------------------
+function safeNum(v){ return v===null||v===''||isNaN(v)?null:parseFloat(v); }
+
+// -------------------- Mode toggle -------------------
+const calcModeEl = document.getElementById('calcMode');
+const rrRatioEl = document.getElementById('rrRatio');
+const exitPriceEl = document.getElementById('exitPrice');
+const riskPercentEl = document.getElementById('riskPercent');
+
+function toggleCalcMode(){
+  const mode = calcModeEl.value;
+  if(mode === 'exit'){
+    exitPriceEl.disabled = false;
+    rrRatioEl.disabled = true;
+    rrRatioEl.value = '';
+    // keep riskPercent enabled — user must provide risk % to compute lot size
+    riskPercentEl.disabled = false;
+  } else {
+    exitPriceEl.disabled = true;
+    exitPriceEl.value = '';
+    rrRatioEl.disabled = false;
+    riskPercentEl.disabled = false;
+  }
+}
+calcModeEl.addEventListener('change', toggleCalcMode);
+
+// -------------------- Form calculation helper -------------------
+function calculateFromForm(values){
+  const equity = Number(values.equity);
+  const entryPrice = Number(values.entryPrice);
+  const stopPrice = Number(values.stopPrice);
+  const direction = values.direction;
+  const pointDiff = Math.abs(entryPrice - stopPrice);
+  if(pointDiff === 0) throw new Error("Entry and Stop can't be equal.");
+
+  let rrRatio = safeNum(values.rrRatio);
+  let tpPrice = null;
+  let potentialProfit = null;
+  let lotSize = 0;
+  let riskPercent = safeNum(values.riskPercent);
+  if(!riskPercent) throw new Error("Risk % is required.");
+
+  if(values.calcMode === 'exit'){
+    if(!values.exitPrice) throw new Error("Exit price required in Exit Price mode.");
+    const exitPrice = Number(values.exitPrice);
+    rrRatio = Math.abs(exitPrice - entryPrice) / pointDiff;
+    const riskDollar = equity * (riskPercent/100);
+    lotSize = riskDollar / pointDiff;
+    tpPrice = exitPrice;
+    potentialProfit = Math.abs(tpPrice - entryPrice) * lotSize;
+  } else {
+    if(!rrRatio) throw new Error("R:R required in R:R mode.");
+    tpPrice = direction === 'long' ? entryPrice + pointDiff * rrRatio : entryPrice - pointDiff * rrRatio;
+    const riskDollar = equity * (riskPercent/100);
+    lotSize = riskDollar / pointDiff;
+    potentialProfit = Math.abs(tpPrice - entryPrice) * lotSize;
+  }
+  return {
+    rrRatio: Number(rrRatio),
+    tpPrice: Number(tpPrice),
+    lotSize: Number(lotSize),
+    potentialProfit: Number(potentialProfit),
+    riskPercent: Number(riskPercent)
+  };
+}
+
 // -------------------- Form Submit -------------------
 document.getElementById("tradeForm").addEventListener("submit",(e)=>{
   e.preventDefault();
-  const market = marketSelect.value;
-  const instrument = instrumentSelect.value;
-  const equity = parseFloat(document.getElementById("equity").value);
-  const riskPercent = parseFloat(document.getElementById("riskPercent").value);
-  const entryPrice = parseFloat(document.getElementById("entryPrice").value);
-  const stopPrice = parseFloat(document.getElementById("stopPrice").value);
-  const rrRatio = parseFloat(document.getElementById("rrRatio").value) || null;
-  const direction = document.getElementById("direction").value;
+  try {
+    const editIndex = document.getElementById('editIndex').value;
+    const form = e.target;
+    const market = marketSelect.value;
+    const instrument = instrumentSelect.value;
+    const equity = safeNum(document.getElementById("equity").value);
+    const calcMode = calcModeEl.value;
+    const riskPercent = safeNum(riskPercentEl.value);
+    const entryPrice = safeNum(document.getElementById("entryPrice").value);
+    const stopPrice = safeNum(document.getElementById("stopPrice").value);
+    const rrRatio = safeNum(rrRatioEl.value);
+    const exitPrice = safeNum(exitPriceEl.value);
+    const direction = document.getElementById("direction").value;
 
-  let pointDiff = Math.abs(entryPrice - stopPrice);
-  let lotSize = (equity*(riskPercent/100))/pointDiff;
+    if(!market || !instrument || !equity || !entryPrice || !stopPrice || !direction) {
+      return alert("Please fill required fields (market, instrument, equity, entry, stop, direction).");
+    }
 
-  let tpPrice = null, potentialProfit = null;
-  if(rrRatio){
-    tpPrice = direction==='long'?entryPrice + pointDiff*rrRatio : entryPrice - pointDiff*rrRatio;
-    potentialProfit = (tpPrice - entryPrice)*lotSize;
-    if(direction==='short') potentialProfit = Math.abs(potentialProfit);
+    const calcRes = calculateFromForm({ equity, entryPrice, stopPrice, calcMode, rrRatio, exitPrice, direction, riskPercent });
+
+    const timestamp = editIndex === '' ? new Date().toLocaleString() : results[editIndex].timestamp;
+
+    const record = {
+      timestamp,
+      market,
+      instrument,
+      direction,
+      equity,
+      riskPercent: calcRes.riskPercent,
+      entryPrice,
+      stopPrice,
+      rrRatio: calcRes.rrRatio,
+      tpPrice: calcRes.tpPrice,
+      lotSize: calcRes.lotSize,
+      potentialProfit: calcRes.potentialProfit
+    };
+
+    if(editIndex === ''){
+      results.unshift(record);
+    } else {
+      results[editIndex] = record;
+    }
+
+    localStorage.setItem("tradeResults",JSON.stringify(results));
+    renderTable(document.getElementById("riskFilter").value);
+    closeForm();
+  } catch(err){
+    alert("Error: " + err.message);
   }
-
-  const timestamp = new Date().toLocaleString();
-  const result = {timestamp,market,instrument,direction,equity,riskPercent,entryPrice,stopPrice,lotSize,tpPrice,potentialProfit};
-  results.unshift(result);
-  localStorage.setItem("tradeResults",JSON.stringify(results));
-  renderTable(document.getElementById("riskFilter").value);
-  document.getElementById("tradeForm").reset();
-  modal.style.display="none";
 });
 
-// -------------------- Delete -------------------
+// "Calculate Only" button: compute and show results in alert (no save)
+document.getElementById("calcOnly").addEventListener("click",()=>{
+  try{
+    const equity = safeNum(document.getElementById("equity").value);
+    const calcMode = calcModeEl.value;
+    const riskPercent = safeNum(riskPercentEl.value);
+    const entryPrice = safeNum(document.getElementById("entryPrice").value);
+    const stopPrice = safeNum(document.getElementById("stopPrice").value);
+    const rrRatio = safeNum(rrRatioEl.value);
+    const exitPrice = safeNum(exitPriceEl.value);
+    const direction = document.getElementById("direction").value;
+    if(!equity || !entryPrice || !stopPrice || !direction) return alert("Fill equity, entry, stop and direction first.");
+    const res = calculateFromForm({ equity, entryPrice, stopPrice, calcMode, rrRatio, exitPrice, direction, riskPercent });
+    alert(`R:R: ${res.rrRatio.toFixed(2)}\nTP: ${res.tpPrice}\nLot: ${res.lotSize.toFixed(6)}\nPotential Profit: ${res.potentialProfit.toFixed(2)}\nRisk % used: ${res.riskPercent.toFixed(2)}`);
+  } catch(err){ alert("Error: " + err.message); }
+});
+
+// -------------------- Edit / Delete -------------------
 resultsBody.addEventListener("click",(e)=>{
+  const idx = e.target.dataset.index;
+  if(idx === undefined) return;
   if(e.target.classList.contains("delete-btn")){
-    const idx=e.target.dataset.index;
+    if(!confirm("Delete this entry?")) return;
     results.splice(idx,1);
     localStorage.setItem("tradeResults",JSON.stringify(results));
     renderTable(document.getElementById("riskFilter").value);
+  } else if(e.target.classList.contains("edit-btn")){
+    const rec = results[idx];
+    openForm(idx);
+    marketSelect.value = rec.market;
+    marketSelect.dispatchEvent(new Event('change'));
+    instrumentSelect.value = rec.instrument;
+    document.getElementById("equity").value = rec.equity;
+    document.getElementById("riskPercent").value = rec.riskPercent;
+    document.getElementById("entryPrice").value = rec.entryPrice;
+    document.getElementById("stopPrice").value = rec.stopPrice;
+    document.getElementById("direction").value = rec.direction;
+    // choose mode: if tpPrice provided and rrRatio computed, set rr mode; else set exit if TP present
+    if(rec.tpPrice !== null && rec.tpPrice !== undefined){
+      // prefer exit mode if user originally used exit (both possible)
+      // determine if rrRatio matches tpPrice; if so set rr mode; otherwise set exit mode
+      const pointDiff = Math.abs(rec.entryPrice - rec.stopPrice);
+      const computedRR = pointDiff === 0 ? null : Math.abs(rec.tpPrice - rec.entryPrice) / pointDiff;
+      if(rec.rrRatio && Math.abs(rec.rrRatio - computedRR) < 1e-6){
+        calcModeEl.value = 'rr';
+        rrRatioEl.value = rec.rrRatio;
+        exitPriceEl.value = '';
+      } else {
+        calcModeEl.value = 'exit';
+        exitPriceEl.value = rec.tpPrice;
+        rrRatioEl.value = rec.rrRatio || '';
+      }
+    } else {
+      calcModeEl.value = 'rr';
+      rrRatioEl.value = rec.rrRatio || '';
+    }
+    toggleCalcMode();
   }
 });
 
 // -------------------- Export CSV -------------------
 document.getElementById("exportCSV").addEventListener("click",()=>{
   if(results.length===0){alert("No data to export"); return;}
-  const headers=["Timestamp","Market","Instrument","Direction","Equity","Risk %","Entry","Stop","Lot Size","TP","Potential Profit"];
+  const headers=["Timestamp","Market","Instrument","Direction","Equity","RiskPercent","Entry","Stop","RR","TP","LotSize","PotentialProfit"];
   const csvRows=[headers.join(",")];
   results.forEach(r=>{
-    csvRows.push([r.timestamp,r.market,r.instrument,r.direction,r.equity,r.riskPercent,r.entryPrice,r.stopPrice,r.lotSize,r.tpPrice||'',r.potentialProfit||''].join(","));
+    const row = [
+      `"${r.timestamp}"`,
+      `"${r.market}"`,
+      `"${r.instrument}"`,
+      `"${r.direction}"`,
+      r.equity,
+      r.riskPercent,
+      r.entryPrice,
+      r.stopPrice,
+      r.rrRatio || '',
+      r.tpPrice || '',
+      r.lotSize,
+      r.potentialProfit || ''
+    ];
+    csvRows.push(row.join(","));
   });
   const blob = new Blob([csvRows.join("\n")],{type:"text/csv"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href=url; a.download="trade_history.csv"; a.click();
   URL.revokeObjectURL(url);
+});
+
+// -------------------- Import CSV -------------------
+document.getElementById("importCSV").addEventListener("click",()=>{
+  document.getElementById('csvImport').click();
+});
+document.getElementById("csvImport").addEventListener("change",(e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try {
+      const text = ev.target.result;
+      const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+      if(lines.length < 2) throw new Error("CSV has no data");
+      const rows = lines.slice(1);
+      const imported = rows.map(r=>{
+        const cols = r.split(",").map(c=>c.replace(/^"|"$/g,''));
+        return {
+          timestamp: cols[0],
+          market: cols[1],
+          instrument: cols[2],
+          direction: cols[3],
+          equity: Number(cols[4]) || 0,
+          riskPercent: Number(cols[5]) || 0,
+          entryPrice: Number(cols[6]) || 0,
+          stopPrice: Number(cols[7]) || 0,
+          rrRatio: cols[8] ? Number(cols[8]) : null,
+          tpPrice: cols[9] ? Number(cols[9]) : null,
+          lotSize: Number(cols[10]) || 0,
+          potentialProfit: cols[11] ? Number(cols[11]) : null
+        };
+      });
+      if(!confirm(`Import ${imported.length} rows? OK to append, Cancel to replace.`)) {
+        results = imported;
+      } else {
+        results = imported.concat(results);
+      }
+      localStorage.setItem("tradeResults",JSON.stringify(results));
+      renderTable(document.getElementById("riskFilter").value);
+      alert("Import successful");
+    } catch(err){
+      alert("Import failed: "+err.message);
+    }
+  };
+  reader.readAsText(file);
 });
 
 // -------------------- Search -------------------
@@ -350,20 +634,31 @@ document.getElementById("riskFilter").addEventListener("change",(e)=>{
 });
 
 // -------------------- Sorting -------------------
-let sortOrder = {timestamp:'desc'};
+let sortOrder = {};
 function sortResults(key){
+  sortOrder[key] = sortOrder[key] === 'asc' ? 'desc' : 'asc';
   results.sort((a,b)=>{
-    if(typeof a[key]==="string") return sortOrder[key]==='asc'? a[key].localeCompare(b[key]): b[key].localeCompare(a[key]);
-    else return sortOrder[key]==='asc'? a[key]-b[key]: b[key]-a[key];
+    const va = a[key], vb = b[key];
+    if(va === undefined) return 1;
+    if(vb === undefined) return -1;
+    if(typeof va === "string") return sortOrder[key]==='asc'? va.localeCompare(vb): vb.localeCompare(va);
+    return sortOrder[key]==='asc'? va - vb : vb - va;
   });
-  sortOrder[key] = sortOrder[key]==='asc'?'desc':'asc';
   renderTable(document.getElementById("riskFilter").value);
 }
 document.querySelectorAll("#historyTable th[data-sort]").forEach(th=>{
   th.addEventListener("click",()=>sortResults(th.dataset.sort));
 });
-// Initial sort by timestamp descending
 sortResults('timestamp');
+
+// -------------------- Clear All -------------------
+document.getElementById("clearAll").addEventListener("click", ()=>{
+  if(!confirm("This will delete ALL saved trade data. Continue?")) return;
+  results = [];
+  localStorage.setItem("tradeResults",JSON.stringify(results));
+  renderTable();
+  alert("All data cleared.");
+});
 </script>
 </body>
 </html>

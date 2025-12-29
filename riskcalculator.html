@@ -191,8 +191,21 @@ button{
       </div>
 
       <div class="form-group">
+        <label>Calculation Mode</label>
+        <select id="calcMode">
+          <option value="rr">Risk : Reward (enter R:R)</option>
+          <option value="exit">By Exit Price (enter Exit/TP)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
         <label>Risk : Reward (optional)</label>
-        <input type="number" id="rrRatio" step="0.1">
+        <input type="number" id="rrRatio" step="0.1" placeholder="e.g. 2">
+      </div>
+
+      <div class="form-group">
+        <label>Exit / Take Profit Price (optional)</label>
+        <input type="number" id="exitPrice" step="0.0001" placeholder="TP price">
       </div>
 
       <div class="form-group">
@@ -226,6 +239,11 @@ button{
   <div class="result-row">
     <span class="result-label">Stop Distance</span>
     <span id="stopDistance">0</span>
+  </div>
+
+  <div class="result-row">
+    <span class="result-label">Risk : Reward (R:R)</span>
+    <span id="displayRr">—</span>
   </div>
 
   <div class="result-row">
@@ -263,9 +281,9 @@ const instruments={
 const market=document.getElementById("market");
 const instrument=document.getElementById("instrument");
 
-market.addEventListener("change",()=>{
+market.addEventListener("change",()=> {
   instrument.innerHTML='<option value="">Select Instrument</option>';
-  if(instruments[market.value]){
+  if(instruments[market.value]) {
     instruments[market.value].forEach(i=>{
       const opt=document.createElement("option");
       opt.value=i; opt.textContent=i;
@@ -274,47 +292,96 @@ market.addEventListener("change",()=>{
   }
 });
 
-/* Calculation */
-document.getElementById("riskForm").addEventListener("submit",e=>{
-  e.preventDefault();
-
-  const equity=+equityInput.value;
-  const riskPercent=+riskPercentInput.value;
-  const entry=+entryPrice.value;
-  const stop=+stopPrice.value;
-  const rr=+rrRatio.value || null;
-  const direction=directionSelect.value;
-
-  const riskAmount=equity*(riskPercent/100);
-  const stopDist=Math.abs(entry-stop);
-  const lot=riskAmount/stopDist;
-
-  let tp="—", profit="—";
-  if(rr){
-    const tpPriceCalc=direction==="long"
-      ? entry + stopDist*rr
-      : entry - stopDist*rr;
-    const p=Math.abs((tpPriceCalc-entry)*lot);
-    tp=tpPriceCalc.toFixed(5);
-    profit="$"+p.toFixed(2);
-  }
-
-  document.getElementById("riskAmount").textContent="$"+riskAmount.toFixed(2);
-  document.getElementById("lotSize").textContent=lot.toFixed(4);
-  document.getElementById("stopDistance").textContent=stopDist.toFixed(5);
-  document.getElementById("tpPrice").textContent=tp;
-  document.getElementById("potentialProfit").textContent=profit;
-
-  document.getElementById("resultCard").style.display="block";
-});
-
 /* Input references */
 const equityInput=document.getElementById("equity");
 const riskPercentInput=document.getElementById("riskPercent");
 const entryPrice=document.getElementById("entryPrice");
 const stopPrice=document.getElementById("stopPrice");
-const rrRatio=document.getElementById("rrRatio");
+const rrRatioInput=document.getElementById("rrRatio");
+const exitPriceInput=document.getElementById("exitPrice");
 const directionSelect=document.getElementById("direction");
+const calcModeSelect=document.getElementById("calcMode");
+
+/* Mode toggle: disable the irrelevant input depending on mode */
+function toggleCalcMode(){
+  const mode = calcModeSelect.value;
+  if(mode === 'exit'){
+    rrRatioInput.disabled = true;
+    rrRatioInput.value = '';
+    exitPriceInput.disabled = false;
+  } else {
+    exitPriceInput.disabled = true;
+    // don't clear exitPrice here (user might switch back), but keep rr enabled
+    rrRatioInput.disabled = false;
+  }
+}
+calcModeSelect.addEventListener('change', toggleCalcMode);
+toggleCalcMode();
+
+/* Calculation */
+document.getElementById("riskForm").addEventListener("submit", e=>{
+  e.preventDefault();
+
+  const equity = Number(equityInput.value);
+  const riskPercent = Number(riskPercentInput.value);
+  const entry = Number(entryPrice.value);
+  const stop = Number(stopPrice.value);
+  const rrInput = rrRatioInput.value ? Number(rrRatioInput.value) : null;
+  const exitP = exitPriceInput.value ? Number(exitPriceInput.value) : null;
+  const direction = directionSelect.value;
+  const mode = calcModeSelect.value;
+
+  if (!equity || !riskPercent || !entry || !stop || !direction) {
+    alert("Please fill required fields.");
+    return;
+  }
+
+  const stopDist = Math.abs(entry - stop);
+  if (stopDist === 0 || !isFinite(stopDist)) {
+    alert("Entry and Stop cannot be equal.");
+    return;
+  }
+
+  const riskAmount = equity * (riskPercent/100);
+  const lot = riskAmount / stopDist;
+
+  let rrValue = null;
+  let tp = "—";
+  let potentialProfit = "—";
+
+  if(mode === 'exit'){
+    if (exitP === null || !isFinite(exitP)) {
+      alert("Please enter an Exit / TP price when mode is 'By Exit Price'.");
+      return;
+    }
+    // compute R:R from exit price
+    rrValue = Math.abs(exitP - entry) / stopDist;
+    tp = exitP.toFixed(5);
+    const profitVal = Math.abs((exitP - entry) * lot);
+    potentialProfit = "$" + profitVal.toFixed(2);
+  } else {
+    // R:R mode (use rr input)
+    if (rrInput === null || !isFinite(rrInput) || rrInput <= 0) {
+      // rr optional — if missing, we can't compute TP or potential profit
+      rrValue = null;
+    } else {
+      rrValue = rrInput;
+      const tpPriceCalc = direction === "long" ? entry + stopDist * rrValue : entry - stopDist * rrValue;
+      tp = tpPriceCalc.toFixed(5);
+      const profitVal = Math.abs((tpPriceCalc - entry) * lot);
+      potentialProfit = "$" + profitVal.toFixed(2);
+    }
+  }
+
+  document.getElementById("riskAmount").textContent = "$" + riskAmount.toFixed(2);
+  document.getElementById("lotSize").textContent = lot.toFixed(4);
+  document.getElementById("stopDistance").textContent = stopDist.toFixed(5);
+  document.getElementById("tpPrice").textContent = tp;
+  document.getElementById("potentialProfit").textContent = potentialProfit;
+  document.getElementById("displayRr").textContent = rrValue ? rrValue.toFixed(2) + " : 1" : "—";
+
+  document.getElementById("resultCard").style.display="block";
+});
 </script>
 
 </body>

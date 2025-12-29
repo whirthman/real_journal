@@ -272,15 +272,23 @@ td{
     <th>Lot</th>
     <th>Risk</th>
     <th onclick="setSort('pnl')">PnL ↕</th>
-    <th>Equity</th>
+    <th>Equity Before</th>
+    <th>Equity After</th>
+    <th>Market Direction</th>
+    <th>Market Condition</th>
+    <th>Trade Type</th>
+    <th>Execution TF</th>
+    <th>Strategy</th>
     <th>TF</th>
     <th>Conf</th>
     <th>Ind</th>
     <th>Psy</th>
     <th>Setup</th>
-    <th>Entry</th>
-    <th>Exit</th>
+    <th>Setup Img</th>
+    <th>Entry Img</th>
+    <th>Exit Img</th>
     <th>Notes</th>
+    <th>Duration</th>
     <th>Action</th>
     </tr>
     </thead>
@@ -294,82 +302,132 @@ td{
 <h2 style="margin-top:0">Log New Trade</h2>
 
 <form id="tradeForm">
+<!-- added names and ids for all inputs and a hidden editId -->
+<input type="hidden" id="editId" name="editId" value="">
 <div class="form-grid">
     <div>
         <label>Broker</label>
-        <input required placeholder="e.g. IC Markets">
+        <input name="broker" id="broker" required placeholder="e.g. IC Markets">
     </div>
     <div>
         <label>Account</label>
-        <input required placeholder="e.g. Live Personal">
+        <input name="account" id="account" required placeholder="e.g. Live Personal">
+    </div>
+    <div>
+        <label>Trade Type</label>
+        <select id="tradeType" name="tradeType" required>
+          <option value="">Select Type</option>
+          <option>Scalping</option>
+          <option>Day Trading</option>
+          <option>Swing Trading</option>
+          <option>Position Trading</option>
+        </select>
     </div>
     <div>
         <label>Market</label>
-        <select id="market" required>
+        <select id="market" name="market" required>
           <option value="">Select Market</option>
           <option>Forex</option>
           <option>Crypto</option>
           <option>Indices</option>
+          <option>Metals</option>
+
         </select>
     </div>
     <div>
         <label>Instrument</label>
-        <select id="instrument" required></select>
+        <select id="instrument" name="instrument" required></select>
     </div>
     <div>
         <label>Direction</label>
-        <select required>
+        <select id="direction" name="direction" required>
           <option>Buy / Long</option>
           <option>Sell / Short</option>
         </select>
     </div>
     <div>
         <label>Entry Price</label>
-        <input type="number" step="any" required>
+        <input type="number" step="any" id="entryPrice" name="entryPrice" required>
     </div>
     <div>
         <label>Exit Price</label>
-        <input type="number" step="any" required>
+        <input type="number" step="any" id="exitPrice" name="exitPrice" required>
     </div>
     <div>
         <label>Stop Loss</label>
-        <input type="number" step="any">
+        <input type="number" step="any" id="sl" name="sl">
     </div>
     <div>
         <label>Result</label>
-        <select required>
+        <select id="result" name="result" required>
             <option value="Win">Win</option>
             <option value="Loss">Loss</option>
         </select>
     </div>
     <div>
         <label>Lot Size</label>
-        <input type="number" step="any">
+        <input type="number" step="any" id="lot" name="lot">
     </div>
     <div>
         <label>Risk ($)</label>
-        <input type="number" step="any">
+        <input type="number" step="any" id="risk" name="risk">
     </div>
     <div>
         <label>Net PnL ($)</label>
-        <input type="number" step="any">
+        <input type="number" step="any" id="pnl" name="pnl">
+    </div>
+     <div>
+        <label>Equity Before ($)</label>
+        <input type="number" step="any" id="equityBefore" name="equityBefore">
     </div>
     <div>
         <label>Equity After ($)</label>
-        <input type="number" step="any">
+        <input type="number" step="any" id="equityAfter" name="equityAfter">
     </div>
     <div>
         <label>Entry Date & Time</label>
-        <input type="datetime-local" required id="entryDateTime">
+        <input type="datetime-local" required id="entryDateTime" name="entryDateTime">
     </div>
     <div>
         <label>Exit Date & Time</label>
-        <input type="datetime-local" required id="exitDateTime">
+        <input type="datetime-local" required id="exitDateTime" name="exitDateTime">
     </div>
 </div>
 
 <fieldset>
 <legend>Analysis Details</legend>
+<div>
+        <label>Market Direction</label>
+        <select id="marketDirection" name="marketDirection" required>
+          <option>Bullish</option>
+          <option>Bearish</option>
+          <option>Range Bound (Sideways)</option>
+
+        </select>
+ </div>
+ <div>
+        <label>Market Condition</label>
+        <select id="marketCondition" name="marketCondition" required>
+          <option>Trending</option>
+          <option>Range Bound (Consolidation)</option>
+          <option>Volatile</option>
+        </select>
+ </div>  
+ <div>
+       <label>Execution Timeframe</label>
+       <select id="executionTF" name="executionTF">
+         <option value="">Select Execution TF</option>
+         <option>Monthly</option>
+         <option>Weekly</option>
+         <option>Daily</option>
+         <option>H4</option>
+         <option>H1</option>
+         <option>M30</option>
+         <option>M15</option>
+         <option>M5</option>
+         <option>M1</option>
+       </select>
+ </div>
 <label>Timeframes</label>
 <div class="checkbox-group" id="tf-group">
     <label><input type="checkbox" value="Monthly"> Monthly</label>
@@ -377,7 +435,10 @@ td{
     <label><input type="checkbox" value="Daily"> Daily</label>
     <label><input type="checkbox" value="H4"> 4H</label>
     <label><input type="checkbox" value="H1"> 1H</label>
+    <label><input type="checkbox" value="M30"> 30m</label>
     <label><input type="checkbox" value="M15"> 15m</label>
+    <label><input type="checkbox" value="M5"> 5m</label>
+    <label><input type="checkbox" value="M1"> 1m</label>
 </div>
 <label style="margin-top:15px">Confluence</label>
 <div class="checkbox-group" id="conf-group">
@@ -385,6 +446,10 @@ td{
     <label><input type="checkbox" value="OB"> OB</label>
     <label><input type="checkbox" value="BOS"> BOS</label>
     <label><input type="checkbox" value="Liquidity"> Liq Sweep</label>
+    <label><input type="checkbox" value="Trendlines">Trendlines</label>
+    <label><input type="checkbox" value="SR">Support Resistance Levels</label>
+    <label><input type="checkbox" value="HTB">Higher Timeframe Bias</label>
+    <label><input type="checkbox" value="Economic News">Fundamental Analysis (Economic News)</label>
 </div>
 
 <label style="margin-top:15px">Indicators Used</label>
@@ -410,15 +475,18 @@ td{
 </div>
 </fieldset>
 
+<label>Strategy Used</label>
+<input id="strategy" name="strategy" placeholder="Strategy used (e.g. Breakout, Mean Reversion)" style="width:100%; padding:12px; margin-top:5px; background:var(--card); border:1px solid var(--line); border-radius:8px; color:white;">
+
 <label>Screenshot URLs (Setup / Entry / Exit)</label>
 <div class="form-grid">
-    <input placeholder="Setup URL">
-    <input placeholder="Entry URL">
-    <input placeholder="Exit URL">
+    <input id="setupUrl" name="setupUrl" placeholder="Setup URL">
+    <input id="entryUrl" name="entryUrl" placeholder="Entry URL">
+    <input id="exitUrl" name="exitUrl" placeholder="Exit URL">
 </div>
 
 <label>Trade Notes</label>
-<textarea rows="3" placeholder="Describe your mindset and reason for trade..."></textarea>
+<textarea rows="3" id="notes" name="notes" placeholder="Describe your mindset and reason for trade..."></textarea>
 
 <button type="submit" style="margin-top: 25px; width: 100%; padding: 15px;">💾 SAVE TRADE ENTRY</button>
 </form>
@@ -429,19 +497,24 @@ td{
 const marketInstruments={
   Forex:["EURUSD","GBPUSD","USDJPY","AUDUSD","USDCAD","USDCHF","NZDUSD"],
   Crypto:["BTCUSD","ETHUSD","SOLUSD","BNBUSD"],
-  Indices:["Volatility 50 Index","Volatility 75 Index","Volatility 100 Index"]
+  Indices:["Volatility 50 Index","Volatility 75 Index","Volatility 100 Index"],
+  Metals: ["XAUUSD","XAGUSD"]
 };
 
 const market=document.getElementById("market");
 const instrument=document.getElementById("instrument");
 
-market.onchange=()=>{
+market.onchange=()=> {
+  const prev = instrument.value;
   instrument.innerHTML="";
   (marketInstruments[market.value]||[]).forEach(i=>{
     let o=document.createElement("option");
     o.textContent=i;
+    o.value=i;
     instrument.appendChild(o);
   });
+  // restore if present
+  if(prev) instrument.value = prev;
 };
 
 let trades=JSON.parse(localStorage.getItem("journalTrades"))||[];
@@ -452,10 +525,18 @@ const tbody=document.querySelector("#tradeTable tbody");
 function openModal(id){
     document.getElementById(id).style.display="flex";
     const now = new Date().toISOString().slice(0, 16);
-    document.getElementById('entryDateTime').value = now;
-    document.getElementById('exitDateTime').value = now;
+    // set defaults only if form is not in edit mode
+    if(!document.getElementById('editId').value){
+      document.getElementById('entryDateTime').value = now;
+      document.getElementById('exitDateTime').value = now;
+    }
 }
-function closeModal(id){document.getElementById(id).style.display="none";}
+function closeModal(id){
+  document.getElementById(id).style.display="none";
+  // clear edit id when closing
+  document.getElementById('editId').value = "";
+  document.getElementById('tradeForm').reset();
+}
 
 function setSort(key) {
     if (sortKey === key) {
@@ -467,6 +548,21 @@ function setSort(key) {
     render();
 }
 
+function formatDuration(entry, exit) {
+  try {
+    const e = new Date(entry);
+    const x = new Date(exit);
+    const diff = x - e;
+    if(isNaN(diff)) return '-';
+    const mins = Math.round(diff / 60000);
+    if (mins < 60) return mins + ' min';
+    if (mins < 1440) return (mins/60).toFixed(2) + ' hrs';
+    return (mins/1440).toFixed(2) + ' days';
+  } catch (err) {
+    return '-';
+  }
+}
+
 function render(){
   tbody.innerHTML="";
   const searchTerm = document.getElementById("searchInput").value.toLowerCase();
@@ -475,17 +571,17 @@ function render(){
   const endDate = document.getElementById("filterEnd").value;
 
   let filtered = trades.filter(t => {
-      const matchSearch = t.instrument.toLowerCase().includes(searchTerm) || t.broker.toLowerCase().includes(searchTerm);
+      const matchSearch = (t.instrument||'').toLowerCase().includes(searchTerm) || (t.broker||'').toLowerCase().includes(searchTerm);
       const matchResult = filterResult === "all" || t.result === filterResult;
-      const tradeDate = new Date(t.date).setHours(0,0,0,0);
+      const tradeDate = t.entryDateTime ? new Date(t.entryDateTime).setHours(0,0,0,0) : (t.date ? new Date(t.date).setHours(0,0,0,0) : null);
       const start = startDate ? new Date(startDate).setHours(0,0,0,0) : null;
       const end = endDate ? new Date(endDate).setHours(0,0,0,0) : null;
       return matchSearch && matchResult && (!start || tradeDate >= start) && (!end || tradeDate <= end);
   });
 
   filtered.sort((a,b)=> {
-      let valA = a[sortKey];
-      let valB = b[sortKey];
+      let valA = a[sortKey] ?? '';
+      let valB = b[sortKey] ?? '';
       
       // Handle numeric sorting
       if (!isNaN(valA) && !isNaN(valB) && valA !== "" && valB !== "") {
@@ -498,19 +594,47 @@ function render(){
       return 0;
   });
 
-  filtered.forEach((t)=>{
+  filtered.forEach((t, idx)=>{
     let r=document.createElement("tr");
     r.className = t.result === "Win" ? "row-win" : "row-loss";
-    r.innerHTML=`<td>${t.displayId}</td><td>${new Date(t.date).toLocaleString()}</td><td>${t.broker}</td><td>${t.account}</td>
-    <td>${t.market}</td><td>${t.instrument}</td><td>${t.direction}</td>
-    <td>${t.entry}</td><td>${t.exit}</td><td>${t.sl}</td><td>${t.result}</td>
-    <td>${t.lot}</td><td>${t.risk}</td><td>${t.pnl}</td><td>${t.equity}</td>
-    <td>${t.tf}</td><td>${t.conf}</td><td>${t.ind || '-'}</td><td>${t.psy || '-'}</td>
-    <td>${t.setup ? `<a href="${t.setup}" target="_blank" style="color:var(--accent)">View</a>` : '-'}</td>
-    <td>${t.entryUrl ? `<a href="${t.entryUrl}" target="_blank" style="color:var(--accent)">View</a>` : '-'}</td>
-    <td>${t.exitUrl ? `<a href="${t.exitUrl}" target="_blank" style="color:var(--accent)">View</a>` : '-'}</td>
-    <td>${t.notes}</td>
-    <td><button class="btn-danger" style="padding:4px 8px" onclick="del('${t.id}')">Delete</button></td>`;
+    const entryDisplay = t.entryDateTime ? new Date(t.entryDateTime).toLocaleString() : (t.date ? new Date(t.date).toLocaleString() : '-');
+    const exitDisplay = t.exitDateTime ? new Date(t.exitDateTime).toLocaleString() : '-';
+    r.innerHTML=
+      `<td>${t.displayId}</td>
+       <td>${entryDisplay}</td>
+       <td>${t.broker||'-'}</td>
+       <td>${t.account||'-'}</td>
+       <td>${t.market||'-'}</td>
+       <td>${t.instrument||'-'}</td>
+       <td>${t.direction||'-'}</td>
+       <td>${t.entryPrice||'-'}</td>
+       <td>${t.exitPrice||'-'}</td>
+       <td>${t.sl||'-'}</td>
+       <td>${t.result||'-'}</td>
+       <td>${t.lot||'-'}</td>
+       <td>${t.risk||'-'}</td>
+       <td>${t.pnl||'-'}</td>
+       <td>${t.equityBefore||'-'}</td>
+       <td>${t.equityAfter||'-'}</td>
+       <td>${t.marketDirection||'-'}</td>
+       <td>${t.marketCondition||'-'}</td>
+       <td>${t.tradeType||'-'}</td>
+       <td>${t.executionTF||'-'}</td>
+       <td>${t.strategy||'-'}</td>
+       <td>${t.tf||'-'}</td>
+       <td>${t.conf||'-'}</td>
+       <td>${t.ind||'-'}</td>
+       <td>${t.psy||'-'}</td>
+       <td>${t.setupUrl ? `<a href="${t.setupUrl}" target="_blank" style="color:var(--accent)">View</a>` : '-'}</td>
+       <td>${t.setupUrl ? `<a href="${t.setupUrl}" target="_blank" style="color:var(--accent)">Img</a>` : '-'}</td>
+       <td>${t.entryUrl ? `<a href="${t.entryUrl}" target="_blank" style="color:var(--accent)">Img</a>` : '-'}</td>
+       <td>${t.exitUrl ? `<a href="${t.exitUrl}" target="_blank" style="color:var(--accent)">Img</a>` : '-'}</td>
+       <td>${t.notes||'-'}</td>
+       <td>${formatDuration(t.entryDateTime, t.exitDateTime)}</td>
+       <td>
+          <button class="btn-outline" style="padding:4px 8px; margin-right:6px" onclick="editTrade('${t.id}')">Edit</button>
+          <button class="btn-danger" style="padding:4px 8px" onclick="del('${t.id}')">Delete</button>
+       </td>`;
     tbody.appendChild(r);
   });
 }
@@ -518,6 +642,8 @@ function render(){
 function del(id){
   if(confirm("Delete this trade?")){
     trades = trades.filter(t => t.id !== id);
+    // recompute displayId
+    trades.forEach((tr,i)=> tr.displayId = i+1);
     localStorage.setItem("journalTrades",JSON.stringify(trades));
     render();
   }
@@ -533,73 +659,145 @@ function clearData(){
 
 document.getElementById("tradeForm").onsubmit=e=>{
   e.preventDefault();
-  const f=e.target;
+  const f = e.target;
   const chk=id=>[...document.querySelectorAll(`#${id} input:checked`)].map(x=>x.value).join(", ");
-  
-  trades.push({
-    id: Date.now().toString(),
-    displayId: trades.length + 1,
+
+  const record = {
+    // use editId if present
+    id: document.getElementById('editId').value || Date.now().toString(),
     date: document.getElementById('entryDateTime').value,
-    broker: f[0].value,
-    account: f[1].value,
-    market: f[2].value,
-    instrument: f[3].value,
-    direction: f[4].value,
-    entry: f[5].value,
-    exit: f[6].value,
-    sl: f[7].value,
-    result: f[8].value,
-    lot: f[9].value,
-    risk: f[10].value,
-    pnl: f[11].value,
-    equity: f[12].value,
-    exitDate: f[14].value,
+    entryDateTime: document.getElementById('entryDateTime').value,
+    exitDateTime: document.getElementById('exitDateTime').value,
+    broker: document.getElementById('broker').value,
+    account: document.getElementById('account').value,
+    market: document.getElementById('market').value,
+    instrument: document.getElementById('instrument').value,
+    tradeType: document.getElementById('tradeType').value,
+    direction: document.getElementById('direction').value,
+    entryPrice: document.getElementById('entryPrice').value,
+    exitPrice: document.getElementById('exitPrice').value,
+    sl: document.getElementById('sl').value,
+    result: document.getElementById('result').value,
+    lot: document.getElementById('lot').value,
+    risk: document.getElementById('risk').value,
+    pnl: document.getElementById('pnl').value,
+    equityBefore: document.getElementById('equityBefore').value,
+    equityAfter: document.getElementById('equityAfter').value,
+    marketDirection: document.getElementById('marketDirection').value,
+    marketCondition: document.getElementById('marketCondition').value,
+    executionTF: document.getElementById('executionTF').value,
     tf: chk("tf-group"),
     conf: chk("conf-group"),
     ind: chk("ind-group"),
     psy: chk("psy-group"),
-    setup: f[19].value,
-    entryUrl: f[20].value,
-    exitUrl: f[21].value,
-    notes: f[22].value
-  });
-  
+    setupUrl: document.getElementById('setupUrl').value,
+    entryUrl: document.getElementById('entryUrl').value,
+    exitUrl: document.getElementById('exitUrl').value,
+    strategy: document.getElementById('strategy').value,
+    notes: document.getElementById('notes').value
+  };
+
+  const editingId = document.getElementById('editId').value;
+  if(editingId){
+    // update existing
+    trades = trades.map(t => t.id === editingId ? { ...t, ...record } : t);
+  } else {
+    trades.push(record);
+  }
+
+  // recompute displayId
+  trades.forEach((tr,i)=> tr.displayId = i+1);
+
   localStorage.setItem("journalTrades",JSON.stringify(trades));
   f.reset();
+  document.getElementById('editId').value = "";
   closeModal('formModal');
   render();
 };
 
+function editTrade(id){
+  const t = trades.find(x=>x.id===id);
+  if(!t) return alert("Trade not found");
+  // populate form
+  document.getElementById('editId').value = t.id;
+  document.getElementById('broker').value = t.broker || '';
+  document.getElementById('account').value = t.account || '';
+  document.getElementById('tradeType').value = t.tradeType || '';
+  document.getElementById('market').value = t.market || '';
+  // trigger instrument repopulate
+  market.onchange();
+  setTimeout(()=> { document.getElementById('instrument').value = t.instrument || ''; }, 0);
+  document.getElementById('direction').value = t.direction || '';
+  document.getElementById('entryPrice').value = t.entryPrice || '';
+  document.getElementById('exitPrice').value = t.exitPrice || '';
+  document.getElementById('sl').value = t.sl || '';
+  document.getElementById('result').value = t.result || '';
+  document.getElementById('lot').value = t.lot || '';
+  document.getElementById('risk').value = t.risk || '';
+  document.getElementById('pnl').value = t.pnl || '';
+  document.getElementById('equityBefore').value = t.equityBefore || '';
+  document.getElementById('equityAfter').value = t.equityAfter || '';
+  document.getElementById('entryDateTime').value = t.entryDateTime || '';
+  document.getElementById('exitDateTime').value = t.exitDateTime || '';
+  document.getElementById('marketDirection').value = t.marketDirection || '';
+  document.getElementById('marketCondition').value = t.marketCondition || '';
+  document.getElementById('executionTF').value = t.executionTF || '';
+  // checkboxes
+  const setChecks = (groupId, valuesStr) => {
+    const vals = (valuesStr||'').split(',').map(s=>s.trim()).filter(Boolean);
+    document.querySelectorAll(`#${groupId} input`).forEach(input=>{
+      input.checked = vals.includes(input.value);
+    });
+  };
+  setChecks('tf-group', t.tf);
+  setChecks('conf-group', t.conf);
+  setChecks('ind-group', t.ind);
+  setChecks('psy-group', t.psy);
+  document.getElementById('setupUrl').value = t.setupUrl || '';
+  document.getElementById('entryUrl').value = t.entryUrl || '';
+  document.getElementById('exitUrl').value = t.exitUrl || '';
+  document.getElementById('strategy').value = t.strategy || '';
+  document.getElementById('notes').value = t.notes || '';
+
+  openModal('formModal');
+}
+
 function exportCSV(){
-    // All columns from the table
-    const headers = ["ID","Date","Broker","Account","Market","Instrument","Direction","Entry","Exit","SL","Result","Lot","Risk","PnL","Equity","Timeframes","Confluence","Indicators","Psychology","SetupURL","EntryURL","ExitURL","Notes"];
+    const headers = ["ID","EntryDateTime","ExitDateTime","Broker","Account","Market","Instrument","Direction","EntryPrice","ExitPrice","SL","Result","Lot","Risk","PnL","EquityBefore","EquityAfter","MarketDirection","MarketCondition","TradeType","ExecutionTF","Strategy","Timeframes","Confluence","Indicators","Psychology","SetupURL","EntryURL","ExitURL","Notes"];
     let csv = headers.join(",") + "\n";
     
     trades.forEach(t => {
         const row = [
             t.displayId,
-            `"${t.date}"`,
-            `"${t.broker}"`,
-            `"${t.account}"`,
-            `"${t.market}"`,
-            `"${t.instrument}"`,
-            `"${t.direction}"`,
-            t.entry,
-            t.exit,
-            t.sl,
-            t.result,
-            t.lot,
-            t.risk,
-            t.pnl,
-            t.equity,
-            `"${t.tf}"`,
-            `"${t.conf}"`,
-            `"${t.ind}"`,
-            `"${t.psy}"`,
-            `"${t.setup}"`,
-            `"${t.entryUrl}"`,
-            `"${t.exitUrl}"`,
-            `"${t.notes.replace(/"/g, '""')}"`
+            `"${t.entryDateTime||''}"`,
+            `"${t.exitDateTime||''}"`,
+            `"${t.broker||''}"`,
+            `"${t.account||''}"`,
+            `"${t.market||''}"`,
+            `"${t.instrument||''}"`,
+            `"${t.direction||''}"`,
+            t.entryPrice||'',
+            t.exitPrice||'',
+            t.sl||'',
+            t.result||'',
+            t.lot||'',
+            t.risk||'',
+            t.pnl||'',
+            t.equityBefore||'',
+            t.equityAfter||'',
+            `"${t.marketDirection||''}"`,
+            `"${t.marketCondition||''}"`,
+            `"${t.tradeType||''}"`,
+            `"${t.executionTF||''}"`,
+            `"${(t.strategy||'').replace(/"/g, '""')}"`,
+            `"${t.tf||''}"`,
+            `"${t.conf||''}"`,
+            `"${t.ind||''}"`,
+            `"${t.psy||''}"`,
+            `"${t.setupUrl||''}"`,
+            `"${t.entryUrl||''}"`,
+            `"${t.exitUrl||''}"`,
+            `"${(t.notes||'').replace(/"/g, '""')}"`
         ];
         csv += row.join(",") + "\n";
     });
@@ -608,7 +806,7 @@ function exportCSV(){
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.setAttribute('href', url);
-    a.setAttribute('download', `journal_export_${new Date().toLocaleDateString()}.csv`);
+    a.setAttribute('download', `journal_export_${new Date().toISOString().slice(0,10)}.csv`);
     a.click();
 }
 
@@ -616,7 +814,7 @@ function importCSV(event){
     const file = event.target.files[0];
     const reader = new FileReader();
     reader.onload = function(e){
-        alert("Import feature requires specific formatting. Use Export to see structure.");
+        alert("Import feature requires the CSV created by Export. Import not implemented in this build.");
     };
     reader.readAsText(file);
 }
