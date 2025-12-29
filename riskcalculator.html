@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Risk Manager</title>
+
+<style>
+:root{
+  --bg:#0e1117;
+  --card:#161b22;
+  --border:#262c36;
+  --text:#e5e7eb;
+  --muted:#9ca3af;
+  --accent:#22c55e;
+}
+
+*{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,sans-serif}
+
+body{
+  margin:0;
+  background:linear-gradient(135deg,#020617,#0e1117);
+  color:var(--text);
+  padding:20px;
+}
+
+.container{
+  max-width:720px;
+  margin:auto;
+}
+
+header{
+  text-align:center;
+  margin-bottom:20px;
+}
+
+header h1{
+  margin:0;
+  font-size:1.8rem;
+}
+
+header p{
+  margin-top:6px;
+  color:var(--muted);
+}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:20px;
+  margin-bottom:20px;
+}
+
+.quote{
+  text-align:center;
+  font-style:italic;
+  color:#c7d2fe;
+}
+
+.form-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+
+.form-group{
+  display:flex;
+  flex-direction:column;
+}
+
+.form-group.full{
+  grid-column:1 / -1;
+}
+
+label{
+  font-size:0.8rem;
+  color:var(--muted);
+  margin-bottom:4px;
+}
+
+input,select{
+  padding:10px;
+  border-radius:10px;
+  background:#020617;
+  border:1px solid var(--border);
+  color:var(--text);
+}
+
+input:focus,select:focus{
+  outline:none;
+  border-color:var(--accent);
+}
+
+button{
+  margin-top:10px;
+  padding:14px;
+  width:100%;
+  border:none;
+  border-radius:12px;
+  font-size:1rem;
+  font-weight:700;
+  background:linear-gradient(135deg,#16a34a,#22c55e);
+  color:#022c22;
+  cursor:pointer;
+}
+
+.result-card{
+  display:none;
+}
+
+.result-row{
+  display:flex;
+  justify-content:space-between;
+  padding:6px 0;
+  border-bottom:1px solid var(--border);
+}
+
+.result-row:last-child{
+  border-bottom:none;
+}
+
+.result-label{
+  color:var(--muted);
+}
+
+.highlight{
+  color:var(--accent);
+  font-weight:700;
+}
+
+@media(max-width:600px){
+  .form-grid{
+    grid-template-columns:1fr;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<header>
+  <h1>Trading Risk Manager</h1>
+  <p>Calculate position size with precision</p>
+</header>
+
+<div class="card quote" id="quoteBox"></div>
+
+<div class="card">
+  <form id="riskForm">
+
+    <div class="form-grid">
+
+      <div class="form-group">
+        <label>Market</label>
+        <select id="market" required>
+          <option value="">Select Market</option>
+          <option value="forex">Forex</option>
+          <option value="crypto">Crypto</option>
+          <option value="indices">Volatility Indices</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Instrument</label>
+        <select id="instrument" required>
+          <option value="">Select Instrument</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Equity ($)</label>
+        <input type="number" id="equity" step="0.01" required>
+      </div>
+
+      <div class="form-group">
+        <label>Risk %</label>
+        <input type="number" id="riskPercent" step="0.01" required>
+      </div>
+
+      <div class="form-group">
+        <label>Entry Price</label>
+        <input type="number" id="entryPrice" step="0.0001" required>
+      </div>
+
+      <div class="form-group">
+        <label>Stop Loss Price</label>
+        <input type="number" id="stopPrice" step="0.0001" required>
+      </div>
+
+      <div class="form-group">
+        <label>Risk : Reward (optional)</label>
+        <input type="number" id="rrRatio" step="0.1">
+      </div>
+
+      <div class="form-group">
+        <label>Direction</label>
+        <select id="direction" required>
+          <option value="">Select</option>
+          <option value="long">Buy / Long</option>
+          <option value="short">Sell / Short</option>
+        </select>
+      </div>
+
+    </div>
+
+    <button type="submit">Calculate Risk</button>
+  </form>
+</div>
+
+<div class="card result-card" id="resultCard">
+  <h3>Trade Summary</h3>
+
+  <div class="result-row">
+    <span class="result-label">Risk Amount</span>
+    <span class="highlight" id="riskAmount">$0.00</span>
+  </div>
+
+  <div class="result-row">
+    <span class="result-label">Lot Size</span>
+    <span id="lotSize">0.00</span>
+  </div>
+
+  <div class="result-row">
+    <span class="result-label">Stop Distance</span>
+    <span id="stopDistance">0</span>
+  </div>
+
+  <div class="result-row">
+    <span class="result-label">Take Profit</span>
+    <span id="tpPrice">—</span>
+  </div>
+
+  <div class="result-row">
+    <span class="result-label">Potential Profit</span>
+    <span id="potentialProfit">—</span>
+  </div>
+</div>
+
+</div>
+
+<script>
+/* Quotes */
+const quotes=[
+  "Protect your capital above all else.",
+  "Risk comes from not knowing what you're doing.",
+  "The market rewards discipline, not emotion.",
+  "Survive first, thrive later.",
+  "Consistency beats intensity."
+];
+const quoteBox=document.getElementById("quoteBox");
+quoteBox.textContent=quotes[Math.floor(Math.random()*quotes.length)];
+
+/* Instruments */
+const instruments={
+  forex:["EURUSD","GBPUSD","USDJPY","XAUUSD"],
+  crypto:["BTCUSD","ETHUSD","SOLUSD"],
+  indices:["Volatility 50","Volatility 75","Volatility 100"]
+};
+
+const market=document.getElementById("market");
+const instrument=document.getElementById("instrument");
+
+market.addEventListener("change",()=>{
+  instrument.innerHTML='<option value="">Select Instrument</option>';
+  if(instruments[market.value]){
+    instruments[market.value].forEach(i=>{
+      const opt=document.createElement("option");
+      opt.value=i; opt.textContent=i;
+      instrument.appendChild(opt);
+    });
+  }
+});
+
+/* Calculation */
+document.getElementById("riskForm").addEventListener("submit",e=>{
+  e.preventDefault();
+
+  const equity=+equityInput.value;
+  const riskPercent=+riskPercentInput.value;
+  const entry=+entryPrice.value;
+  const stop=+stopPrice.value;
+  const rr=+rrRatio.value || null;
+  const direction=directionSelect.value;
+
+  const riskAmount=equity*(riskPercent/100);
+  const stopDist=Math.abs(entry-stop);
+  const lot=riskAmount/stopDist;
+
+  let tp="—", profit="—";
+  if(rr){
+    const tpPriceCalc=direction==="long"
+      ? entry + stopDist*rr
+      : entry - stopDist*rr;
+    const p=Math.abs((tpPriceCalc-entry)*lot);
+    tp=tpPriceCalc.toFixed(5);
+    profit="$"+p.toFixed(2);
+  }
+
+  document.getElementById("riskAmount").textContent="$"+riskAmount.toFixed(2);
+  document.getElementById("lotSize").textContent=lot.toFixed(4);
+  document.getElementById("stopDistance").textContent=stopDist.toFixed(5);
+  document.getElementById("tpPrice").textContent=tp;
+  document.getElementById("potentialProfit").textContent=profit;
+
+  document.getElementById("resultCard").style.display="block";
+});
+
+/* Input references */
+const equityInput=document.getElementById("equity");
+const riskPercentInput=document.getElementById("riskPercent");
+const entryPrice=document.getElementById("entryPrice");
+const stopPrice=document.getElementById("stopPrice");
+const rrRatio=document.getElementById("rrRatio");
+const directionSelect=document.getElementById("direction");
+</script>
+
+</body>
+</html>

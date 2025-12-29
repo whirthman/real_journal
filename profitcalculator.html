@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Compounding Calculator</title>
+
+<style>
+:root {
+  --bg: #0e1117;
+  --card: #161b22;
+  --accent: #22c55e;
+  --danger: #ef4444;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --border: #262c36;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0e1117, #020617);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.app {
+  width: 100%;
+  max-width: 520px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.header p {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+label {
+  display: block;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+  color: var(--muted);
+}
+
+input {
+  width: 100%;
+  padding: 12px 14px;
+  background: #020617;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  color: #022c22;
+  font-size: 1rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+button:hover {
+  opacity: 0.95;
+}
+
+.result-card {
+  margin-top: 22px;
+  padding: 20px;
+  border-radius: 14px;
+  background: #020617;
+  border: 1px solid var(--border);
+  display: none;
+}
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.result-row:last-child {
+  margin-bottom: 0;
+}
+
+.result-label {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.result-value {
+  font-weight: 600;
+}
+
+.final {
+  color: var(--accent);
+  font-size: 1.1rem;
+}
+
+@media (max-width: 480px) {
+  .header h1 {
+    font-size: 1.5rem;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+  <div class="header">
+    <h1>Compounding Calculator</h1>
+    <p>Exponential growth made simple</p>
+  </div>
+
+  <div class="card">
+    <div class="form-group">
+      <label>Starting Equity ($)</label>
+      <input type="number" id="equity" placeholder="e.g. 100" min="0" step="0.01">
+    </div>
+
+    <div class="form-group">
+      <label>Target Daily Profit (%)</label>
+      <input type="number" id="dailyProfit" placeholder="e.g. 3" min="0" step="0.01">
+    </div>
+
+    <div class="form-group">
+      <label>Compounding Days</label>
+      <input type="number" id="days" placeholder="e.g. 30" min="1">
+    </div>
+
+    <button onclick="calculate()">Calculate Growth</button>
+
+    <div class="result-card" id="resultCard">
+      <div class="result-row">
+        <span class="result-label">Starting Equity</span>
+        <span class="result-value" id="startEquity">$0.00</span>
+      </div>
+
+      <div class="result-row">
+        <span class="result-label">Final Equity</span>
+        <span class="result-value final" id="finalEquity">$0.00</span>
+      </div>
+
+      <div class="result-row">
+        <span class="result-label">Total Profit</span>
+        <span class="result-value" id="totalProfit">$0.00</span>
+      </div>
+
+      <div class="result-row">
+        <span class="result-label">Growth (%)</span>
+        <span class="result-value" id="growthPercent">0%</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function calculate() {
+  const equity = parseFloat(document.getElementById("equity").value);
+  const daily = parseFloat(document.getElementById("dailyProfit").value);
+  const days = parseInt(document.getElementById("days").value);
+
+  if (isNaN(equity) || isNaN(daily) || isNaN(days)) {
+    alert("Please fill in all fields correctly.");
+    return;
+  }
+
+  let finalEquity = equity;
+
+  for (let i = 0; i < days; i++) {
+    finalEquity += finalEquity * (daily / 100);
+  }
+
+  const profit = finalEquity - equity;
+  const growth = (profit / equity) * 100;
+
+  document.getElementById("startEquity").textContent = `$${equity.toFixed(2)}`;
+  document.getElementById("finalEquity").textContent = `$${finalEquity.toFixed(2)}`;
+  document.getElementById("totalProfit").textContent = `$${profit.toFixed(2)}`;
+  document.getElementById("growthPercent").textContent = `${growth.toFixed(2)}%`;
+
+  document.getElementById("resultCard").style.display = "block";
+}
+</script>
+
+</body>
+</html>
