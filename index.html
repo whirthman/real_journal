@@ -927,11 +927,150 @@ function exportCSV(){
     a.click();
 }
 
+function parseCSV(text) {
+    const rows = [];
+    let current = '';
+    let insideQuotes = false;
+    
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const nextChar = text[i + 1];
+        
+        if (char === '"') {
+            if (insideQuotes && nextChar === '"') {
+                current += '"';
+                i++;
+            } else {
+                insideQuotes = !insideQuotes;
+            }
+        } else if (char === ',' && !insideQuotes) {
+            rows.push(current.trim());
+            current = '';
+        } else if ((char === '\n' || char === '\r') && !insideQuotes) {
+            if (current.trim()) rows.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    
+    if (current.trim()) rows.push(current.trim());
+    return rows;
+}
+
 function importCSV(event){
     const file = event.target.files[0];
+    if (!file) return;
+    
     const reader = new FileReader();
     reader.onload = function(e){
-        alert("Import feature requires the CSV created by Export. Import not implemented in this build.");
+        try {
+            const text = e.target.result;
+            const lines = text.split('\n').filter(line => line.trim());
+            
+            if (lines.length < 2) {
+                alert("CSV file is empty or has no data rows");
+                return;
+            }
+            
+            const headers = parseCSV(lines[0]);
+            const expectedHeaders = ["ID","EntryDateTime","ExitDateTime","Broker","Account","Market","Instrument","Direction","EntryPrice","ExitPrice","SL","Result","Lot","Risk","PnL","EquityBefore","EquityAfter","MarketDirection","MarketCondition","TradeType","ExecutionTF","Strategy","Timeframes","Confluence","Indicators","Psychology","SetupURL","EntryURL","ExitURL","Notes"];
+            
+            // Validate headers
+            if (headers.length < 20) {
+                alert("CSV format is invalid. Please export and re-import using the Export feature.");
+                return;
+            }
+            
+            let importedCount = 0;
+            let skippedCount = 0;
+            
+            for (let i = 1; i < lines.length; i++) {
+                try {
+                    const rowData = parseCSV(lines[i]);
+                    
+                    if (rowData.length === 0 || rowData.every(cell => !cell)) continue;
+                    
+                    // Check if this trade already exists (by ID or entry datetime)
+                    const existingId = rowData[0];
+                    const existingDateTime = rowData[1];
+                    
+                    const isDuplicate = trades.some(t => 
+                        t.entryDateTime === existingDateTime || 
+                        (t.displayId == parseInt(existingId))
+                    );
+                    
+                    if (isDuplicate) {
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    const record = {
+                        id: Date.now().toString() + Math.random(),
+                        displayId: parseInt(rowData[0]) || trades.length + 1,
+                        entryDateTime: rowData[1] || '',
+                        exitDateTime: rowData[2] || '',
+                        broker: rowData[3] || '',
+                        account: rowData[4] || '',
+                        market: rowData[5] || '',
+                        instrument: rowData[6] || '',
+                        direction: rowData[7] || '',
+                        entryPrice: rowData[8] || '',
+                        exitPrice: rowData[9] || '',
+                        sl: rowData[10] || '',
+                        result: rowData[11] || '',
+                        lot: rowData[12] || '',
+                        risk: rowData[13] || '',
+                        pnl: rowData[14] || '',
+                        equityBefore: rowData[15] || '',
+                        equityAfter: rowData[16] || '',
+                        marketDirection: rowData[17] || '',
+                        marketCondition: rowData[18] || '',
+                        tradeType: rowData[19] || '',
+                        executionTF: rowData[20] || '',
+                        strategy: rowData[21] || '',
+                        tf: rowData[22] || '',
+                        conf: rowData[23] || '',
+                        ind: rowData[24] || '',
+                        psy: rowData[25] || '',
+                        setupUrl: rowData[26] || '',
+                        entryUrl: rowData[27] || '',
+                        exitUrl: rowData[28] || '',
+                        notes: rowData[29] || ''
+                    };
+                    
+                    // Validate required fields
+                    if (!record.entryDateTime) {
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    trades.push(record);
+                    importedCount++;
+                    
+                } catch (rowErr) {
+                    skippedCount++;
+                    console.error("Error parsing row " + i, rowErr);
+                }
+            }
+            
+            // Recompute displayId
+            trades.forEach((tr, i) => tr.displayId = i + 1);
+            
+            localStorage.setItem("journalTrades", JSON.stringify(trades));
+            
+            if (importedCount > 0) {
+                alert(`✓ Import successful!\n${importedCount} trades imported.\n${skippedCount} rows skipped (duplicates or invalid).`);
+                render();
+                document.getElementById('csvImport').value = '';
+            } else {
+                alert(`No valid trades to import.\n${skippedCount} rows skipped.`);
+            }
+            
+        } catch (err) {
+            console.error("Import error:", err);
+            alert("Error importing CSV: " + err.message);
+        }
     };
     reader.readAsText(file);
 }
