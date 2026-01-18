@@ -261,39 +261,81 @@ td{
     <th onclick="setSort('displayId')">ID ↕</th>
     <th onclick="setSort('date')">Date ↕</th>
     <th onclick="setSort('broker')">Broker ↕</th>
-    <th>Account</th>
-    <th>Market</th>
     <th onclick="setSort('instrument')">Instrument ↕</th>
-    <th>Dir</th>
+    <th>Direction</th>
     <th>Entry</th>
     <th>Exit</th>
-    <th>SL</th>
     <th onclick="setSort('result')">Result ↕</th>
-    <th>Lot</th>
-    <th>Risk</th>
     <th onclick="setSort('pnl')">PnL ↕</th>
-    <th>Equity Before</th>
-    <th>Equity After</th>
-    <th>Market Direction</th>
-    <th>Market Condition</th>
-    <th>Trade Type</th>
-    <th>Execution TF</th>
-    <th>Strategy</th>
-    <th>TF</th>
-    <th>Conf</th>
-    <th>Ind</th>
-    <th>Psy</th>
-    <th>Setup</th>
-    <th>Setup Img</th>
-    <th>Entry Img</th>
-    <th>Exit Img</th>
-    <th>Notes</th>
     <th>Duration</th>
     <th>Action</th>
     </tr>
     </thead>
     <tbody></tbody>
     </table>
+</div>
+
+<div class="modal" id="detailsModal">
+<div class="modal-content">
+<span class="close" onclick="closeModal('detailsModal')">✕</span>
+<h2 style="margin-top:0">Trade Details</h2>
+<div id="detailsContent" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+</div>
+
+<fieldset style="margin-top: 20px;">
+<legend>Analysis Details</legend>
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+  <div><strong>Market Direction:</strong> <span id="detailMarketDirection">-</span></div>
+  <div><strong>Market Condition:</strong> <span id="detailMarketCondition">-</span></div>
+  <div><strong>Execution TF:</strong> <span id="detailExecutionTF">-</span></div>
+  <div><strong>Timeframes:</strong> <span id="detailTf">-</span></div>
+  <div><strong>Confluence:</strong> <span id="detailConf">-</span></div>
+  <div><strong>Indicators:</strong> <span id="detailInd">-</span></div>
+  <div><strong>Psychology:</strong> <span id="detailPsy">-</span></div>
+  <div><strong>Strategy:</strong> <span id="detailStrategy">-</span></div>
+</div>
+</fieldset>
+
+<div style="margin-top: 20px;">
+<strong>Trade Notes:</strong>
+<div style="background: var(--card); padding: 12px; border-radius: 8px; border: 1px solid var(--line); margin-top: 8px;">
+  <span id="detailNotes" style="white-space: pre-wrap;">-</span>
+</div>
+</div>
+
+<fieldset style="margin-top: 20px;">
+<legend>Chart Screenshots</legend>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">
+  <div>
+    <p style="margin: 0 0 10px 0; font-weight: 600;">Setup Chart</p>
+    <img id="detailSetupImg" src="" alt="Setup" style="width: 100%; border-radius: 8px; border: 1px solid var(--line); display: none; cursor: pointer;" onclick="openImageModal(this.src)">
+    <div id="detailSetupPlaceholder" style="width: 100%; aspect-ratio: 16/9; background: var(--card); border: 2px dashed var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted);">No image</div>
+  </div>
+  <div>
+    <p style="margin: 0 0 10px 0; font-weight: 600;">Entry Chart</p>
+    <img id="detailEntryImg" src="" alt="Entry" style="width: 100%; border-radius: 8px; border: 1px solid var(--line); display: none; cursor: pointer;" onclick="openImageModal(this.src)">
+    <div id="detailEntryPlaceholder" style="width: 100%; aspect-ratio: 16/9; background: var(--card); border: 2px dashed var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted);">No image</div>
+  </div>
+  <div>
+    <p style="margin: 0 0 10px 0; font-weight: 600;">Exit Chart</p>
+    <img id="detailExitImg" src="" alt="Exit" style="width: 100%; border-radius: 8px; border: 1px solid var(--line); display: none; cursor: pointer;" onclick="openImageModal(this.src)">
+    <div id="detailExitPlaceholder" style="width: 100%; aspect-ratio: 16/9; background: var(--card); border: 2px dashed var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted);">No image</div>
+  </div>
+</div>
+</fieldset>
+
+<div style="display: flex; gap: 10px; margin-top: 20px;">
+  <button class="btn-outline" onclick="editTradeFromDetails()" style="flex: 1;">Edit Trade</button>
+  <button class="btn-danger" onclick="deleteTradeFromDetails()" style="flex: 1;">Delete Trade</button>
+</div>
+</div>
+</div>
+
+<div class="modal" id="imageModal">
+<div style="position: relative; width: 95%; max-width: 90vh; max-height: 90vh; display: flex; align-items: center; justify-content: center;">
+<span class="close" onclick="closeModal('imageModal')" style="position: absolute; top: -40px; right: 0; font-size: 32px;">✕</span>
+<img id="fullImage" src="" alt="Full View" style="max-width: 100%; max-height: 100%; border-radius: 8px;">
+</div>
 </div>
 
 <div class="modal" id="formModal">
@@ -599,41 +641,19 @@ function render(){
     let r=document.createElement("tr");
     r.className = t.result === "Win" ? "row-win" : "row-loss";
     const entryDisplay = t.entryDateTime ? new Date(t.entryDateTime).toLocaleString() : (t.date ? new Date(t.date).toLocaleString() : '-');
-    const exitDisplay = t.exitDateTime ? new Date(t.exitDateTime).toLocaleString() : '-';
     r.innerHTML=
       `<td>${t.displayId}</td>
        <td>${entryDisplay}</td>
        <td>${t.broker||'-'}</td>
-       <td>${t.account||'-'}</td>
-       <td>${t.market||'-'}</td>
        <td>${t.instrument||'-'}</td>
        <td>${t.direction||'-'}</td>
        <td>${t.entryPrice||'-'}</td>
        <td>${t.exitPrice||'-'}</td>
-       <td>${t.sl||'-'}</td>
        <td>${t.result||'-'}</td>
-       <td>${t.lot||'-'}</td>
-       <td>${t.risk||'-'}</td>
        <td>${t.pnl||'-'}</td>
-       <td>${t.equityBefore||'-'}</td>
-       <td>${t.equityAfter||'-'}</td>
-       <td>${t.marketDirection||'-'}</td>
-       <td>${t.marketCondition||'-'}</td>
-       <td>${t.tradeType||'-'}</td>
-       <td>${t.executionTF||'-'}</td>
-       <td>${t.strategy||'-'}</td>
-       <td>${t.tf||'-'}</td>
-       <td>${t.conf||'-'}</td>
-       <td>${t.ind||'-'}</td>
-       <td>${t.psy||'-'}</td>
-       <td>${t.setupUrl ? `<a href="${t.setupUrl}" target="_blank" style="color:var(--accent)">View</a>` : '-'}</td>
-       <td>${t.setupUrl ? `<a href="${t.setupUrl}" target="_blank" style="color:var(--accent)">Img</a>` : '-'}</td>
-       <td>${t.entryUrl ? `<a href="${t.entryUrl}" target="_blank" style="color:var(--accent)">Img</a>` : '-'}</td>
-       <td>${t.exitUrl ? `<a href="${t.exitUrl}" target="_blank" style="color:var(--accent)">Img</a>` : '-'}</td>
-       <td>${t.notes||'-'}</td>
        <td>${formatDuration(t.entryDateTime, t.exitDateTime)}</td>
        <td>
-          <button class="btn-outline" style="padding:4px 8px; margin-right:6px" onclick="editTrade('${t.id}')">Edit</button>
+          <button class="btn-outline" style="padding:4px 8px; margin-right:6px" onclick="viewTradeDetails('${t.id}')">Details</button>
           <button class="btn-danger" style="padding:4px 8px" onclick="del('${t.id}')">Delete</button>
        </td>`;
     tbody.appendChild(r);
@@ -715,6 +735,102 @@ document.getElementById("tradeForm").onsubmit=e=>{
   closeModal('formModal');
   render();
 };
+
+function editTradeFromDetails(){
+  const currentTradeId = document.getElementById('detailsModal').getAttribute('data-trade-id');
+  closeModal('detailsModal');
+  editTrade(currentTradeId);
+}
+
+function deleteTradeFromDetails(){
+  const currentTradeId = document.getElementById('detailsModal').getAttribute('data-trade-id');
+  closeModal('detailsModal');
+  del(currentTradeId);
+}
+
+function viewTradeDetails(id){
+  const t = trades.find(x=>x.id===id);
+  if(!t) return alert("Trade not found");
+  
+  // Store trade id for edit/delete
+  document.getElementById('detailsModal').setAttribute('data-trade-id', id);
+  
+  // Populate basic details
+  const detailsContent = document.getElementById('detailsContent');
+  detailsContent.innerHTML = `
+    <div><strong>ID:</strong> ${t.displayId}</div>
+    <div><strong>Entry Date:</strong> ${t.entryDateTime ? new Date(t.entryDateTime).toLocaleString() : '-'}</div>
+    <div><strong>Exit Date:</strong> ${t.exitDateTime ? new Date(t.exitDateTime).toLocaleString() : '-'}</div>
+    <div><strong>Duration:</strong> ${formatDuration(t.entryDateTime, t.exitDateTime)}</div>
+    <div><strong>Broker:</strong> ${t.broker||'-'}</div>
+    <div><strong>Account:</strong> ${t.account||'-'}</div>
+    <div><strong>Market:</strong> ${t.market||'-'}</div>
+    <div><strong>Instrument:</strong> ${t.instrument||'-'}</div>
+    <div><strong>Direction:</strong> ${t.direction||'-'}</div>
+    <div><strong>Trade Type:</strong> ${t.tradeType||'-'}</div>
+    <div><strong>Entry Price:</strong> ${t.entryPrice||'-'}</div>
+    <div><strong>Exit Price:</strong> ${t.exitPrice||'-'}</div>
+    <div><strong>Stop Loss:</strong> ${t.sl||'-'}</div>
+    <div><strong>Result:</strong> <span style="padding: 2px 8px; border-radius: 4px; background: ${t.result === 'Win' ? 'var(--win)' : 'var(--loss)'}; color: white;">${t.result||'-'}</span></div>
+    <div><strong>Lot Size:</strong> ${t.lot||'-'}</div>
+    <div><strong>Risk ($):</strong> ${t.risk||'-'}</div>
+    <div><strong>PnL ($):</strong> <span style="color: ${t.pnl >= 0 ? 'var(--win)' : 'var(--loss)'}; font-weight: bold;">${t.pnl||'-'}</span></div>
+    <div><strong>Equity Before:</strong> ${t.equityBefore||'-'}</div>
+    <div><strong>Equity After:</strong> ${t.equityAfter||'-'}</div>
+  `;
+  
+  // Populate analysis details
+  document.getElementById('detailMarketDirection').textContent = t.marketDirection||'-';
+  document.getElementById('detailMarketCondition').textContent = t.marketCondition||'-';
+  document.getElementById('detailExecutionTF').textContent = t.executionTF||'-';
+  document.getElementById('detailTf').textContent = t.tf||'-';
+  document.getElementById('detailConf').textContent = t.conf||'-';
+  document.getElementById('detailInd').textContent = t.ind||'-';
+  document.getElementById('detailPsy').textContent = t.psy||'-';
+  document.getElementById('detailStrategy').textContent = t.strategy||'-';
+  document.getElementById('detailNotes').textContent = t.notes||'No notes added';
+  
+  // Handle images
+  const setupImg = document.getElementById('detailSetupImg');
+  const setupPlaceholder = document.getElementById('detailSetupPlaceholder');
+  if(t.setupUrl){
+    setupImg.src = t.setupUrl;
+    setupImg.style.display = 'block';
+    setupPlaceholder.style.display = 'none';
+  } else {
+    setupImg.style.display = 'none';
+    setupPlaceholder.style.display = 'flex';
+  }
+  
+  const entryImg = document.getElementById('detailEntryImg');
+  const entryPlaceholder = document.getElementById('detailEntryPlaceholder');
+  if(t.entryUrl){
+    entryImg.src = t.entryUrl;
+    entryImg.style.display = 'block';
+    entryPlaceholder.style.display = 'none';
+  } else {
+    entryImg.style.display = 'none';
+    entryPlaceholder.style.display = 'flex';
+  }
+  
+  const exitImg = document.getElementById('detailExitImg');
+  const exitPlaceholder = document.getElementById('detailExitPlaceholder');
+  if(t.exitUrl){
+    exitImg.src = t.exitUrl;
+    exitImg.style.display = 'block';
+    exitPlaceholder.style.display = 'none';
+  } else {
+    exitImg.style.display = 'none';
+    exitPlaceholder.style.display = 'flex';
+  }
+  
+  openModal('detailsModal');
+}
+
+function openImageModal(src){
+  document.getElementById('fullImage').src = src;
+  openModal('imageModal');
+}
 
 function editTrade(id){
   const t = trades.find(x=>x.id===id);
