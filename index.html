@@ -305,22 +305,22 @@ td{
 
 <fieldset style="margin-top: 20px;">
 <legend>Chart Screenshots</legend>
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">
-  <div>
-    <p style="margin: 0 0 10px 0; font-weight: 600;">Setup Chart</p>
-    <img id="detailSetupImg" src="" alt="Setup" style="width: 100%; border-radius: 8px; border: 1px solid var(--line); display: none; cursor: pointer;" onclick="openImageModal(this.src)">
-    <div id="detailSetupPlaceholder" style="width: 100%; aspect-ratio: 16/9; background: var(--card); border: 2px dashed var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted);">No image</div>
-  </div>
-  <div>
-    <p style="margin: 0 0 10px 0; font-weight: 600;">Entry Chart</p>
-    <img id="detailEntryImg" src="" alt="Entry" style="width: 100%; border-radius: 8px; border: 1px solid var(--line); display: none; cursor: pointer;" onclick="openImageModal(this.src)">
-    <div id="detailEntryPlaceholder" style="width: 100%; aspect-ratio: 16/9; background: var(--card); border: 2px dashed var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted);">No image</div>
-  </div>
-  <div>
-    <p style="margin: 0 0 10px 0; font-weight: 600;">Exit Chart</p>
-    <img id="detailExitImg" src="" alt="Exit" style="width: 100%; border-radius: 8px; border: 1px solid var(--line); display: none; cursor: pointer;" onclick="openImageModal(this.src)">
-    <div id="detailExitPlaceholder" style="width: 100%; aspect-ratio: 16/9; background: var(--card); border: 2px dashed var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted);">No image</div>
-  </div>
+<div style="margin-top: 15px;">
+  <p style="margin: 0 0 10px 0; font-weight: 600;">Setup Charts</p>
+  <div id="setupGallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;"></div>
+  <div id="detailSetupPlaceholder" style="width: 100%; aspect-ratio: 16/9; background: var(--card); border: 2px dashed var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted);">No images</div>
+</div>
+
+<div style="margin-top: 20px;">
+  <p style="margin: 0 0 10px 0; font-weight: 600;">Entry Charts</p>
+  <div id="entryGallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;"></div>
+  <div id="detailEntryPlaceholder" style="width: 100%; aspect-ratio: 16/9; background: var(--card); border: 2px dashed var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted);">No images</div>
+</div>
+
+<div style="margin-top: 20px;">
+  <p style="margin: 0 0 10px 0; font-weight: 600;">Exit Charts</p>
+  <div id="exitGallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;"></div>
+  <div id="detailExitPlaceholder" style="width: 100%; aspect-ratio: 16/9; background: var(--card); border: 2px dashed var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted);">No images</div>
 </div>
 </fieldset>
 
@@ -781,6 +781,108 @@ function editTrade(id){
   document.getElementById('notes').value = t.notes || '';
 
   openModal('formModal');
+}
+
+function viewTradeDetails(id){
+  const t = trades.find(x=>x.id===id);
+  if(!t) return alert("Trade not found");
+  
+  // Store trade id for edit/delete
+  document.getElementById('detailsModal').setAttribute('data-trade-id', id);
+  
+  // Populate basic details
+  const detailsContent = document.getElementById('detailsContent');
+  detailsContent.innerHTML = `
+    <div><strong>ID:</strong> ${t.displayId}</div>
+    <div><strong>Entry Date:</strong> ${t.entryDateTime ? new Date(t.entryDateTime).toLocaleString() : '-'}</div>
+    <div><strong>Exit Date:</strong> ${t.exitDateTime ? new Date(t.exitDateTime).toLocaleString() : '-'}</div>
+    <div><strong>Duration:</strong> ${formatDuration(t.entryDateTime, t.exitDateTime)}</div>
+    <div><strong>Broker:</strong> ${t.broker||'-'}</div>
+    <div><strong>Account:</strong> ${t.account||'-'}</div>
+    <div><strong>Market:</strong> ${t.market||'-'}</div>
+    <div><strong>Instrument:</strong> ${t.instrument||'-'}</div>
+    <div><strong>Direction:</strong> ${t.direction||'-'}</div>
+    <div><strong>Trade Type:</strong> ${t.tradeType||'-'}</div>
+    <div><strong>Entry Price:</strong> ${t.entryPrice||'-'}</div>
+    <div><strong>Exit Price:</strong> ${t.exitPrice||'-'}</div>
+    <div><strong>Stop Loss:</strong> ${t.sl||'-'}</div>
+    <div><strong>Result:</strong> <span style="padding: 2px 8px; border-radius: 4px; background: ${t.result === 'Win' ? 'var(--win)' : 'var(--loss)'}; color: white;">${t.result||'-'}</span></div>
+    <div><strong>Lot Size:</strong> ${t.lot||'-'}</div>
+    <div><strong>Risk ($):</strong> ${t.risk||'-'}</div>
+    <div><strong>PnL ($):</strong> <span style="color: ${t.pnl >= 0 ? 'var(--win)' : 'var(--loss)'}; font-weight: bold;">${t.pnl||'-'}</span></div>
+    <div><strong>Equity Before:</strong> ${t.equityBefore||'-'}</div>
+    <div><strong>Equity After:</strong> ${t.equityAfter||'-'}</div>
+  `;
+  
+  // Populate analysis details
+  document.getElementById('detailMarketDirection').textContent = t.marketDirection||'-';
+  document.getElementById('detailMarketCondition').textContent = t.marketCondition||'-';
+  document.getElementById('detailExecutionTF').textContent = t.executionTF||'-';
+  document.getElementById('detailTf').textContent = t.tf||'-';
+  document.getElementById('detailConf').textContent = t.conf||'-';
+  document.getElementById('detailInd').textContent = t.ind||'-';
+  document.getElementById('detailPsy').textContent = t.psy||'-';
+  document.getElementById('detailStrategy').textContent = t.strategy||'-';
+  document.getElementById('detailNotes').textContent = t.notes||'No notes added';
+  
+  // Helper function to render image gallery
+  function renderGallery(urls, galleryId, placeholderId) {
+    const gallery = document.getElementById(galleryId);
+    const placeholder = document.getElementById(placeholderId);
+    gallery.innerHTML = '';
+    
+    if (!urls || !urls.trim()) {
+      placeholder.style.display = 'flex';
+      return;
+    }
+    
+    const imageUrls = urls.split(',').map(url => url.trim()).filter(url => url);
+    
+    if (imageUrls.length === 0) {
+      placeholder.style.display = 'flex';
+      return;
+    }
+    
+    placeholder.style.display = 'none';
+    imageUrls.forEach((url, idx) => {
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = `Image ${idx + 1}`;
+      img.style.cssText = 'width: 100%; border-radius: 8px; border: 1px solid var(--line); cursor: pointer; transition: transform 0.2s;';
+      img.onmouseover = () => img.style.transform = 'scale(1.05)';
+      img.onmouseout = () => img.style.transform = 'scale(1)';
+      img.onclick = () => openImageModal(url);
+      img.onerror = () => {
+        img.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22%3E%3Crect fill=%22%23334155%22 width=%22100%25%22 height=%22100%25%22/%3E%3C/svg%3E';
+        img.style.cursor = 'default';
+      };
+      gallery.appendChild(img);
+    });
+  }
+  
+  // Handle images with multiple URLs support
+  renderGallery(t.setupUrl, 'setupGallery', 'detailSetupPlaceholder');
+  renderGallery(t.entryUrl, 'entryGallery', 'detailEntryPlaceholder');
+  renderGallery(t.exitUrl, 'exitGallery', 'detailExitPlaceholder');
+  
+  openModal('detailsModal');
+}
+
+function openImageModal(src){
+  document.getElementById('fullImage').src = src;
+  openModal('imageModal');
+}
+
+function editTradeFromDetails(){
+  const currentTradeId = document.getElementById('detailsModal').getAttribute('data-trade-id');
+  closeModal('detailsModal');
+  editTrade(currentTradeId);
+}
+
+function deleteTradeFromDetails(){
+  const currentTradeId = document.getElementById('detailsModal').getAttribute('data-trade-id');
+  closeModal('detailsModal');
+  del(currentTradeId);
 }
 
 function exportCSV(){
