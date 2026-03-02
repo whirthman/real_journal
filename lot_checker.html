@@ -1,0 +1,296 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deriv Position Size Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      width: 90%;
+      max-width: 520px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #020617;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+    input:focus, select:focus { outline: 2px solid #2563eb; }
+    @media (max-width: 600px) {
+      .container {
+        margin: 10px;
+        padding: 15px;
+      }
+      h1 {
+        font-size: 1.2rem;
+      }
+      button {
+        padding: 10px;
+        font-size: 0.95rem;
+      }
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.4rem;
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-size: 0.9rem;
+      color: #cbd5f5;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      border-radius: 8px;
+      border: none;
+      background: #1e293b;
+      color: #e5e7eb;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    .risk-section {
+      display: grid;
+      grid-template-columns: 1fr 100px;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .risk-section input {
+      margin-top: 6px;
+    }
+    .risk-section select {
+      margin-top: 6px;
+      width: 100%;
+    }
+    button {
+      width: 100%;
+      margin-top: 18px;
+      padding: 12px;
+      font-size: 1rem;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    button:hover { background: #1d4ed8; }
+    .result {
+      margin-top: 18px;
+      padding: 12px;
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      font-size: 0.95rem;
+    }
+    .highlight { color: #22c55e; font-weight: bold; }
+    .info-text { font-size: 0.85rem; color: #94a3b8; margin-top: 4px; }
+    footer {
+      text-align: center;
+      margin-top: 15px;
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Deriv Risk & Lot Calculator</h1>
+    
+    <label>Account Balance (USD)</label>
+    <input id="balance" type="number" value="200000" />
+
+    <label>Risk Configuration</label>
+    <div class="risk-section">
+      <input id="risk" type="number" value="1000" />
+      <select id="riskType">
+        <option value="fixed">Fixed (USD)</option>
+        <option value="percent">% Equity</option>
+      </select>
+    </div>
+    <div class="info-text" id="riskInfo">Risk: $1,000 USD</div>
+
+    <label>Market</label>
+    <select id="market">
+      <option value="volatility">Volatility Indices</option>
+      <option value="forex">Forex</option>
+      <option value="crypto">Cryptocurrencies</option>
+      <option value="metals">Metals</option>
+      <option value="indices">Indices</option>
+    </select>
+
+    <label>Instrument</label>
+    <select id="instrument"></select>
+
+    <label>Entry Price</label>
+    <input id="entry" type="number" step="any" />
+
+    <label>Stop Loss Price</label>
+    <input id="stop" type="number" step="any" />
+
+    <button onclick="calculate()">Calculate Lot Size</button>
+
+    <div id="output" class="result"></div>
+
+    <footer>Built for Deriv • Offline SPA</footer>
+  </div>
+
+  <script>
+    document.getElementById('risk').addEventListener('input', updateRiskInfo);
+    document.getElementById('riskType').addEventListener('change', updateRiskInfo);
+    document.getElementById('balance').addEventListener('input', updateRiskInfo);
+
+    // market and instrument handling
+    const instrumentLists = {
+      volatility: [
+        {val:'vol25',text:'Volatility 25'},
+        {val:'vol50',text:'Volatility 50'},
+        {val:'vol75',text:'Volatility 75'},
+        {val:'vol100',text:'Volatility 100'},
+        {val:'vol25s',text:'Volatility 25s'},
+        {val:'vol50s',text:'Volatility 50s'},
+        {val:'vol75s',text:'Volatility 75s'},
+        {val:'vol100s',text:'Volatility 100s'}
+      ],
+      forex: [
+        {val:'eurusd',text:'EURUSD'},{val:'gbpusd',text:'GBPUSD'},{val:'usdjpy',text:'USDJPY'},
+        {val:'audusd',text:'AUDUSD'},{val:'usdcad',text:'USDCAD'},{val:'usdchf',text:'USDCHF'},
+        {val:'nzdusd',text:'NZDUSD'},{val:'eurgbp',text:'EURGBP'},{val:'eurjpy',text:'EURJPY'},
+        {val:'gbpjpy',text:'GBPJPY'},{val:'audjpy',text:'AUDJPY'},{val:'nzdjpy',text:'NZDJPY'},
+        {val:'eurchf',text:'EURCHF'},{val:'euraud',text:'EURAUD'},{val:'eurcad',text:'EURCAD'},
+        {val:'gbpaud',text:'GBPAUD'},{val:'gbpcad',text:'GBPCAD'},{val:'gbpchf',text:'GBPCHF'},
+        {val:'audcad',text:'AUDCAD'},{val:'audchf',text:'AUDCHF'},{val:'nzdcad',text:'NZDCAD'},
+        {val:'nzdchf',text:'NZDCHF'}
+      ],
+      crypto: [
+        {val:'btcusd',text:'BTCUSD'},{val:'ethusd',text:'ETHUSD'},{val:'ethbtc',text:'ETHBTC'},
+        {val:'bch',text:'BITCOINCASH'},{val:'bnb',text:'BNB'},{val:'xrp',text:'XRP'},{val:'doge',text:'DOGECOIN'}
+      ],
+      metals: [
+        {val:'xau',text:'XAUUSD (Gold)'},{val:'xag',text:'XAGUSD (Silver)'}
+      ],
+      indices: [
+        {val:'us100',text:'US 100'},{val:'nas100',text:'NASDAQ 100'}
+      ]
+    };
+
+    function populateInstruments() {
+      const market = document.getElementById('market').value;
+      const instSel = document.getElementById('instrument');
+      instSel.innerHTML = '';
+      (instrumentLists[market]||[]).forEach(i=>{
+        const opt = document.createElement('option');
+        opt.value = i.val;
+        opt.textContent = i.text;
+        instSel.appendChild(opt);
+      });
+    }
+
+    document.getElementById('market').addEventListener('change', populateInstruments);
+    populateInstruments();
+
+    function updateRiskInfo() {
+      const balance = parseFloat(document.getElementById('balance').value) || 0;
+      const riskValue = parseFloat(document.getElementById('risk').value) || 0;
+      const riskType = document.getElementById('riskType').value;
+
+      let riskAmount = 0;
+      let infoText = '';
+
+      if (riskType === 'fixed') {
+        riskAmount = riskValue;
+        infoText = `Risk: $${riskAmount.toFixed(2)} USD`;
+      } else {
+        riskAmount = (balance * riskValue) / 100;
+        infoText = `Risk: ${riskValue}% of $${balance.toFixed(2)} = $${riskAmount.toFixed(2)}`;
+      }
+
+      document.getElementById('riskInfo').textContent = infoText;
+    }
+
+    function getRiskAmount() {
+      const balance = parseFloat(document.getElementById('balance').value) || 0;
+      const riskValue = parseFloat(document.getElementById('risk').value) || 0;
+      const riskType = document.getElementById('riskType').value;
+
+      if (riskType === 'percent') {
+        return (balance * riskValue) / 100;
+      }
+      return riskValue;
+    }
+
+    function calculate() {
+      const risk = getRiskAmount();
+      const entry = parseFloat(document.getElementById('entry').value);
+      const stop = parseFloat(document.getElementById('stop').value);
+      let instrument = document.getElementById('instrument').value;
+      if (instrument) instrument = instrument.toLowerCase();
+
+      if (!risk || !entry || !stop) {
+        document.getElementById('output').innerHTML = 'Please fill all fields.';
+        return;
+      }
+
+      const distance = Math.abs(stop - entry);
+      let lot = 0;
+      let calculationInfo = '';
+
+      // Volatility Indices - $1 per point per lot
+      if (instrument.startsWith('vol')) {
+        lot = risk / distance;
+        calculationInfo = 'Volatility: $1/point/lot';
+      }
+      // Forex pairs - calculate via pips (many majors and minors)
+      else if ([
+        'eurusd','gbpusd','audusd','usdcad','usdchf','nzdusd','eurgbp',
+        'eurjpy','gbpjpy','audjpy','nzdjpy','eurchf','euraud','eurcad',
+        'gbpaud','gbpcad','gbpchf','audcad','audchf','nzdcad','nzdchf'
+      ].includes(instrument) || instrument === 'usdjpy') {
+        const isJPY = instrument.includes('jpy');
+        const pipSize = isJPY ? 0.01 : 0.0001;
+        const pips = distance / pipSize;
+        const perPip = 10; // standard $10 per pip per lot
+        lot = risk / (pips * perPip);
+        calculationInfo = 'Forex: pip-based';
+      }
+      // Metals - Gold: 100 oz per lot, Silver: 5000 oz per lot
+      else if (instrument === 'xau') {
+        lot = risk / (distance * 100);
+        calculationInfo = 'Gold: 100 oz/lot';
+      }
+      else if (instrument === 'xag') {
+        lot = risk / (distance * 5000);
+        calculationInfo = 'Silver: 5000 oz/lot';
+      }
+      // Crypto - $1 per point per lot (simplified)
+      else if (['btcusd', 'ethusd', 'ethbtc', 'bch', 'bnb', 'xrp', 'doge'].includes(instrument)) {
+        lot = risk / distance;
+        calculationInfo = 'Crypto: $1/point/lot';
+      }
+      // Indices - $1 per point per lot
+      else if (['us100', 'nas100'].includes(instrument)) {
+        lot = risk / distance;
+        calculationInfo = 'Index: $1/point/lot';
+      }
+
+      const label = instrument.toUpperCase();
+      document.getElementById('output').innerHTML = `
+        <b>${label}</b><br>
+        Stop Distance: <b>${distance.toFixed(4)}</b><br>
+        Calculation: ${calculationInfo}<br>
+        <br>
+        Recommended Lot Size: <span class="highlight">${lot.toFixed(4)}</span>
+      `;
+    }
+
+    // Initialize
+    updateRiskInfo();
+  </script>
+</body>
+</html>

@@ -307,20 +307,20 @@ td{
 <legend>Chart Screenshots</legend>
 <div style="margin-top: 15px;">
   <p style="margin: 0 0 10px 0; font-weight: 600;">Setup Charts</p>
-  <div id="setupGallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;"></div>
-  <div id="detailSetupPlaceholder" style="width: 100%; aspect-ratio: 16/9; background: var(--card); border: 2px dashed var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted);">No images</div>
+  <div id="setupGallery" style="margin-bottom: 10px;"></div>
+  <div id="detailSetupPlaceholder" style="color: var(--muted); font-size: 14px;">No links</div>
 </div>
 
 <div style="margin-top: 20px;">
   <p style="margin: 0 0 10px 0; font-weight: 600;">Entry Charts</p>
-  <div id="entryGallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;"></div>
-  <div id="detailEntryPlaceholder" style="width: 100%; aspect-ratio: 16/9; background: var(--card); border: 2px dashed var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted);">No images</div>
+  <div id="entryGallery" style="margin-bottom: 10px;"></div>
+  <div id="detailEntryPlaceholder" style="color: var(--muted); font-size: 14px;">No links</div>
 </div>
 
 <div style="margin-top: 20px;">
   <p style="margin: 0 0 10px 0; font-weight: 600;">Exit Charts</p>
-  <div id="exitGallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;"></div>
-  <div id="detailExitPlaceholder" style="width: 100%; aspect-ratio: 16/9; background: var(--card); border: 2px dashed var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted);">No images</div>
+  <div id="exitGallery" style="margin-bottom: 10px;"></div>
+  <div id="detailExitPlaceholder" style="color: var(--muted); font-size: 14px;">No links</div>
 </div>
 </fieldset>
 
@@ -845,18 +845,14 @@ function viewTradeDetails(id){
     
     placeholder.style.display = 'none';
     imageUrls.forEach((url, idx) => {
-      const img = document.createElement('img');
-      img.src = url;
-      img.alt = `Image ${idx + 1}`;
-      img.style.cssText = 'width: 100%; border-radius: 8px; border: 1px solid var(--line); cursor: pointer; transition: transform 0.2s;';
-      img.onmouseover = () => img.style.transform = 'scale(1.05)';
-      img.onmouseout = () => img.style.transform = 'scale(1)';
-      img.onclick = () => openImageModal(url);
-      img.onerror = () => {
-        img.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22%3E%3Crect fill=%22%23334155%22 width=%22100%25%22 height=%22100%25%22/%3E%3C/svg%3E';
-        img.style.cursor = 'default';
-      };
-      gallery.appendChild(img);
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.textContent = `Screenshot ${idx + 1}`;
+      link.style.cssText = 'color: var(--accent); text-decoration: none; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line); display: inline-block; transition: all 0.2s; margin-right: 8px;';
+      link.onmouseover = () => link.style.background = 'rgba(59, 130, 246, 0.1)';
+      link.onmouseout = () => link.style.background = 'transparent';
+      gallery.appendChild(link);
     });
   }
   
