@@ -149,14 +149,22 @@
     // market and instrument handling
     const instrumentLists = {
       volatility: [
+        {val:'vol10',text:'Volatility 10'},
+        {val:'vol10s',text:'Volatility 10s'},
+        {val:'vol15',text:'Volatility 15'},
+        {val:'vol15s',text:'Volatility 15s'},
         {val:'vol25',text:'Volatility 25'},
-        {val:'vol50',text:'Volatility 50'},
-        {val:'vol75',text:'Volatility 75'},
-        {val:'vol100',text:'Volatility 100'},
         {val:'vol25s',text:'Volatility 25s'},
+        {val:'vol30',text:'Volatility 30'},
+        {val:'vol30s',text:'Volatility 30s'},
+        {val:'vol50',text:'Volatility 50'},
         {val:'vol50s',text:'Volatility 50s'},
+        {val:'vol75',text:'Volatility 75'},
         {val:'vol75s',text:'Volatility 75s'},
-        {val:'vol100s',text:'Volatility 100s'}
+        {val:'vol100',text:'Volatility 100'},
+        {val:'vol100s',text:'Volatility 100s'},
+        {val:'vol250',text:'Volatility 250'},
+        {val:'vol250s',text:'Volatility 250s'}
       ],
       forex: [
         {val:'eurusd',text:'EURUSD'},{val:'gbpusd',text:'GBPUSD'},{val:'usdjpy',text:'USDJPY'},
@@ -176,8 +184,38 @@
         {val:'xau',text:'XAUUSD (Gold)'},{val:'xag',text:'XAGUSD (Silver)'}
       ],
       indices: [
-        {val:'us100',text:'US 100'},{val:'nas100',text:'NASDAQ 100'}
+        {val:'us500',text:'US 500 (S&P 500)'},
+        {val:'us100',text:'US 100'},
+        {val:'nas100',text:'NASDAQ 100'},
+        {val:'us30',text:'US 30 (Dow Jones)'},
+        {val:'uk100',text:'UK 100'},
+        {val:'ger30',text:'GER 30'},
+        {val:'jp225',text:'JP 225'},
+        {val:'aus200',text:'AUS 200'},
+        {val:'hk50',text:'HK 50'},
+        {val:'eu50',text:'EU 50'},
+        {val:'fr40',text:'FR 40'}
       ]
+    };
+
+    // Default specs for volatility instruments (defaults used until official Deriv specs provided)
+    const volatilitySpecs = {
+      vol10: { pointValue: 1, minLot: 0.01 },
+      vol10s: { pointValue: 1, minLot: 0.01 },
+      vol15: { pointValue: 1, minLot: 0.01 },
+      vol15s: { pointValue: 1, minLot: 0.01 },
+      vol25: { pointValue: 1, minLot: 0.01 },
+      vol25s: { pointValue: 1, minLot: 0.01 },
+      vol30: { pointValue: 1, minLot: 0.01 },
+      vol30s: { pointValue: 1, minLot: 0.01 },
+      vol50: { pointValue: 1, minLot: 0.01 },
+      vol50s: { pointValue: 1, minLot: 0.01 },
+      vol75: { pointValue: 1, minLot: 0.01 },
+      vol75s: { pointValue: 1, minLot: 0.01 },
+      vol100: { pointValue: 1, minLot: 0.01 },
+      vol100s: { pointValue: 1, minLot: 0.01 },
+      vol250: { pointValue: 1, minLot: 0.01 },
+      vol250s: { pointValue: 1, minLot: 0.01 }
     };
 
     function populateInstruments() {
@@ -243,8 +281,15 @@
 
       // Volatility Indices - $1 per point per lot
       if (instrument.startsWith('vol')) {
-        lot = risk / distance;
-        calculationInfo = 'Volatility: $1/point/lot';
+        const spec = volatilitySpecs[instrument] || { pointValue: 1, minLot: 0.01 };
+        // risk is in USD, distance is price units: lot = risk / (distance * pointValue)
+        lot = risk / (distance * spec.pointValue);
+        if (lot < spec.minLot) {
+          calculationInfo = `Volatility: $${spec.pointValue}/point/lot — using min lot ${spec.minLot}`;
+          lot = spec.minLot;
+        } else {
+          calculationInfo = `Volatility: $${spec.pointValue}/point/lot`;
+        }
       }
       // Forex pairs - calculate via pips (many majors and minors)
       else if ([
@@ -274,12 +319,16 @@
         calculationInfo = 'Crypto: $1/point/lot';
       }
       // Indices - $1 per point per lot
-      else if (['us100', 'nas100'].includes(instrument)) {
+      else if ([
+        'us500','us100','nas100','us30','uk100','ger30','jp225','aus200','hk50','eu50','fr40'
+      ].includes(instrument)) {
+        // Treat common indices as $1 per point per lot (default)
         lot = risk / distance;
         calculationInfo = 'Index: $1/point/lot';
       }
 
-      const label = instrument.toUpperCase();
+      const instSelect = document.getElementById('instrument');
+      const label = instSelect.options[instSelect.selectedIndex] ? instSelect.options[instSelect.selectedIndex].textContent : instrument.toUpperCase();
       document.getElementById('output').innerHTML = `
         <b>${label}</b><br>
         Stop Distance: <b>${distance.toFixed(4)}</b><br>
