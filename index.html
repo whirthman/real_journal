@@ -549,6 +549,27 @@ const marketInstruments={
 const market=document.getElementById("market");
 const instrument=document.getElementById("instrument");
 
+// Normalize screenshot URL fields: strip HTML tags and extract actual URLs
+function extractUrls(raw) {
+  if (!raw) return '';
+  // find src attributes in case user pasted <img src="..."> HTML
+  const srcRegex = /src\s*=\s*['\"]([^'\"]+)['\"]/gi;
+  let matches = [];
+  let m;
+  while ((m = srcRegex.exec(raw)) !== null) {
+    if (m[1]) matches.push(m[1].trim());
+  }
+
+  // If we found src attributes, return them
+  if (matches.length) return matches.join(', ');
+
+  // Otherwise try to extract plain URLs
+  const urlRegex = /(https?:\/\/[\w\-._~:\/?#\[\]@!$&'()*+,;=%]+)/gi;
+  matches = (raw.match(urlRegex) || []).map(u => u.trim());
+  // If none, return trimmed original (fallback)
+  return matches.length ? matches.join(', ') : raw.trim();
+}
+
 market.onchange=()=> {
   const prev = instrument.value;
   instrument.innerHTML="";
@@ -713,9 +734,9 @@ document.getElementById("tradeForm").onsubmit=e=>{
     conf: chk("conf-group"),
     ind: chk("ind-group"),
     psy: chk("psy-group"),
-    setupUrl: document.getElementById('setupUrl').value,
-    entryUrl: document.getElementById('entryUrl').value,
-    exitUrl: document.getElementById('exitUrl').value,
+    setupUrl: extractUrls(document.getElementById('setupUrl').value),
+    entryUrl: extractUrls(document.getElementById('entryUrl').value),
+    exitUrl: extractUrls(document.getElementById('exitUrl').value),
     strategy: document.getElementById('strategy').value,
     notes: document.getElementById('notes').value
   };
@@ -1033,9 +1054,9 @@ function importCSV(event){
                         conf: rowData[23] || '',
                         ind: rowData[24] || '',
                         psy: rowData[25] || '',
-                        setupUrl: rowData[26] || '',
-                        entryUrl: rowData[27] || '',
-                        exitUrl: rowData[28] || '',
+                        setupUrl: extractUrls(rowData[26] || ''),
+                        entryUrl: extractUrls(rowData[27] || ''),
+                        exitUrl: extractUrls(rowData[28] || ''),
                         notes: rowData[29] || ''
                     };
                     
