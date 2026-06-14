@@ -398,14 +398,19 @@ td{
         <input type="number" step="any" id="exitPrice" name="exitPrice" required>
     </div>
     <div>
+      <label>Take Profit</label>
+      <input type="number" step="any" id="takeProfit" name="takeProfit">
+    </div>
+    <div>
         <label>Stop Loss</label>
         <input type="number" step="any" id="sl" name="sl">
     </div>
     <div>
         <label>Result</label>
         <select id="result" name="result" required>
-            <option value="Win">Win</option>
-            <option value="Loss">Loss</option>
+        <option value="Win">Win</option>
+        <option value="Loss">Loss</option>
+        <option value="Breakeven">Breakeven</option>
         </select>
     </div>
     <div>
@@ -752,6 +757,7 @@ document.getElementById("tradeForm").onsubmit=e=>{
     direction: document.getElementById('direction').value,
     entryPrice: document.getElementById('entryPrice').value,
     exitPrice: document.getElementById('exitPrice').value,
+    takeProfit: document.getElementById('takeProfit').value,
     sl: document.getElementById('sl').value,
     result: document.getElementById('result').value,
     lot: document.getElementById('lot').value,
@@ -806,6 +812,7 @@ function editTrade(id){
   document.getElementById('direction').value = t.direction || '';
   document.getElementById('entryPrice').value = t.entryPrice || '';
   document.getElementById('exitPrice').value = t.exitPrice || '';
+  document.getElementById('takeProfit').value = t.takeProfit || '';
   document.getElementById('sl').value = t.sl || '';
   document.getElementById('result').value = t.result || '';
   document.getElementById('lot').value = t.lot || '';
@@ -860,6 +867,7 @@ function viewTradeDetails(id){
     <div><strong>Trade Type:</strong> ${t.tradeType||'-'}</div>
     <div><strong>Entry Price:</strong> ${t.entryPrice||'-'}</div>
     <div><strong>Exit Price:</strong> ${t.exitPrice||'-'}</div>
+    <div><strong>Take Profit:</strong> ${t.takeProfit||'-'}</div>
     <div><strong>Stop Loss:</strong> ${t.sl||'-'}</div>
     <div><strong>Result:</strong> <span style="padding: 2px 8px; border-radius: 4px; background: ${t.result === 'Win' ? 'var(--win)' : 'var(--loss)'}; color: white;">${t.result||'-'}</span></div>
     <div><strong>Lot Size:</strong> ${t.lot||'-'}</div>
@@ -937,8 +945,8 @@ function deleteTradeFromDetails(){
 }
 
 function exportCSV(){
-    const headers = ["ID","EntryDateTime","ExitDateTime","Broker","Account","Market","Instrument","Direction","EntryPrice","ExitPrice","SL","Result","Lot","Risk","PnL","EquityBefore","EquityAfter","MarketDirection","MarketCondition","TradeType","ExecutionTF","Strategy","Timeframes","Confluence","Indicators","Psychology","SetupURL","EntryURL","ExitURL","Notes"];
-    let csv = headers.join(",") + "\n";
+  const headers = ["ID","EntryDateTime","ExitDateTime","Broker","Account","Market","Instrument","Direction","EntryPrice","ExitPrice","TakeProfit","SL","Result","Lot","Risk","PnL","EquityBefore","EquityAfter","MarketDirection","MarketCondition","TradeType","ExecutionTF","Strategy","Timeframes","Confluence","Indicators","Psychology","SetupURL","EntryURL","ExitURL","Notes"];
+  let csv = headers.join(",") + "\n";
     
     trades.forEach(t => {
         const row = [
@@ -952,6 +960,7 @@ function exportCSV(){
             `"${t.direction||''}"`,
             t.entryPrice||'',
             t.exitPrice||'',
+            t.takeProfit||'',
             t.sl||'',
             t.result||'',
             t.lot||'',
@@ -1060,36 +1069,37 @@ function importCSV(event){
                     }
                     
                     const record = {
-                        id: Date.now().toString() + Math.random(),
-                        displayId: parseInt(rowData[0]) || trades.length + 1,
-                        date: rowData[1] || '',
-                        broker: rowData[3] || '',
-                        account: rowData[4] || '',
-                        market: rowData[5] || '',
-                        instrument: rowData[6] || '',
-                        direction: rowData[7] || '',
-                        entryPrice: rowData[8] || '',
-                        exitPrice: rowData[9] || '',
-                        sl: rowData[10] || '',
-                        result: rowData[11] || '',
-                        lot: rowData[12] || '',
-                        risk: rowData[13] || '',
-                        pnl: rowData[14] || '',
-                        equityBefore: rowData[15] || '',
-                        equityAfter: rowData[16] || '',
-                        marketDirection: rowData[17] || '',
-                        marketCondition: rowData[18] || '',
-                        tradeType: rowData[19] || '',
-                        executionTF: rowData[20] || '',
-                        strategy: rowData[21] || '',
-                        tf: rowData[22] || '',
-                        conf: rowData[23] || '',
-                        ind: rowData[24] || '',
-                        psy: rowData[25] || '',
-                        setupUrl: extractUrls(rowData[26] || ''),
-                        entryUrl: extractUrls(rowData[27] || ''),
-                        exitUrl: extractUrls(rowData[28] || ''),
-                        notes: rowData[29] || ''
+                      id: Date.now().toString() + Math.random(),
+                      displayId: parseInt(rowData[0]) || trades.length + 1,
+                      date: rowData[1] || '',
+                      broker: rowData[3] || '',
+                      account: rowData[4] || '',
+                      market: rowData[5] || '',
+                      instrument: rowData[6] || '',
+                      direction: rowData[7] || '',
+                      entryPrice: rowData[8] || '',
+                      exitPrice: rowData[9] || '',
+                      takeProfit: rowData[10] || '',
+                      sl: rowData[11] || '',
+                      result: rowData[12] || '',
+                      lot: rowData[13] || '',
+                      risk: rowData[14] || '',
+                      pnl: rowData[15] || '',
+                      equityBefore: rowData[16] || '',
+                      equityAfter: rowData[17] || '',
+                      marketDirection: rowData[18] || '',
+                      marketCondition: rowData[19] || '',
+                      tradeType: rowData[20] || '',
+                      executionTF: rowData[21] || '',
+                      strategy: rowData[22] || '',
+                      tf: rowData[23] || '',
+                      conf: rowData[24] || '',
+                      ind: rowData[25] || '',
+                      psy: rowData[26] || '',
+                      setupUrl: extractUrls(rowData[27] || ''),
+                      entryUrl: extractUrls(rowData[28] || ''),
+                      exitUrl: extractUrls(rowData[29] || ''),
+                      notes: rowData[30] || ''
                     };
                     
                     if (!record.date) {
