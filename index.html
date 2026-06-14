@@ -258,8 +258,9 @@ td{
     <table id="tradeTable">
     <thead>
     <tr>
-    <th onclick="setSort('displayId')">ID ↕</th>
-    <th onclick="setSort('date')">Date ↕</th>
+        <button class="btn-outline" style="padding:4px 8px; margin-right:6px" onclick="viewTradeDetails('${t.id}')">Details</button>
+        <button class="btn-outline" style="padding:4px 8px; margin-right:6px" onclick="duplicateTrade('${t.id}')">Duplicate</button>
+        <button class="btn-danger" style="padding:4px 8px" onclick="del('${t.id}')">Delete</button>
     <th onclick="setSort('broker')">Broker ↕</th>
     <th onclick="setSort('instrument')">Instrument ↕</th>
     <th>Direction</th>
@@ -326,6 +327,7 @@ td{
 
 <div style="display: flex; gap: 10px; margin-top: 20px;">
   <button class="btn-outline" onclick="editTradeFromDetails()" style="flex: 1;">Edit Trade</button>
+  <button class="btn-outline" onclick="duplicateTradeFromDetails()" style="flex: 1;">Duplicate</button>
   <button class="btn-danger" onclick="deleteTradeFromDetails()" style="flex: 1;">Delete Trade</button>
 </div>
 </div>
@@ -539,10 +541,19 @@ td{
 </div>
 
 <script>
-const marketInstruments={
-  Forex:["EURUSD","GBPUSD","USDJPY","AUDUSD","USDCAD","USDCHF","NZDUSD"],
+const marketInstruments={  Forex:[
+    "EURUSD","GBPUSD","USDJPY","AUDUSD","USDCAD","USDCHF","NZDUSD",
+    "EURGBP","EURJPY","EURAUD","EURCAD","EURNZD","EURCHF",
+    "GBPJPY","GBPAUD","GBPCAD","GBPCHF","AUDJPY","AUDCAD","AUDNZD",
+    "CADJPY","CHFJPY","NZDJPY","USDSGD","USDNOK"
+  ],
   Crypto:["BTCUSD","ETHUSD","SOLUSD","BNBUSD"],
-  Indices:["Volatility 50 Index","Volatility 75 Index","Volatility 100 Index"],
+  Indices:[
+    "Volatility 10 Index","Volatility 10s Index",
+    "Volatility 15 Index","Volatility 15s Index",
+    "Volatility 35 Index","Volatility 35s Index",
+    "Volatility 50 Index","Volatility 75 Index","Volatility 100 Index"
+  ],
   Metals: ["XAUUSD","XAGUSD"]
 };
 
@@ -691,6 +702,27 @@ function del(id){
     localStorage.setItem("journalTrades",JSON.stringify(trades));
     render();
   }
+}
+
+function duplicateTrade(id){
+  const t = trades.find(x=>x.id===id);
+  if(!t) return alert('Trade not found');
+  const copy = JSON.parse(JSON.stringify(t));
+  // assign new unique id and reset displayId (will be recalculated)
+  copy.id = Date.now().toString() + Math.floor(Math.random()*10000).toString();
+  // keep timestamps the same but ensure date field exists
+  copy.date = copy.entryDateTime || copy.date || '';
+  trades.push(copy);
+  trades.forEach((tr,i)=> tr.displayId = i+1);
+  localStorage.setItem("journalTrades",JSON.stringify(trades));
+  render();
+}
+
+function duplicateTradeFromDetails(){
+  const currentTradeId = document.getElementById('detailsModal').getAttribute('data-trade-id');
+  if(!currentTradeId) return alert('No trade selected');
+  duplicateTrade(currentTradeId);
+  closeModal('detailsModal');
 }
 
 function clearData(){
