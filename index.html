@@ -258,18 +258,18 @@ td{
     <table id="tradeTable">
     <thead>
     <tr>
-        <button class="btn-outline" style="padding:4px 8px; margin-right:6px" onclick="viewTradeDetails('${t.id}')">Details</button>
-        <button class="btn-outline" style="padding:4px 8px; margin-right:6px" onclick="duplicateTrade('${t.id}')">Duplicate</button>
-        <button class="btn-danger" style="padding:4px 8px" onclick="del('${t.id}')">Delete</button>
-    <th onclick="setSort('broker')">Broker ↕</th>
-    <th onclick="setSort('instrument')">Instrument ↕</th>
-    <th>Direction</th>
-    <th>Entry</th>
-    <th>Exit</th>
-    <th onclick="setSort('result')">Result ↕</th>
-    <th onclick="setSort('pnl')">PnL ↕</th>
-    <th>Duration</th>
-    <th>Action</th>
+      <th>ID</th>
+      <th onclick="setSort('entryDateTime')">Entry Date ↕</th>
+      <th onclick="setSort('broker')">Broker ↕</th>
+      <th onclick="setSort('instrument')">Instrument ↕</th>
+      <th>Direction</th>
+      <th>Entry</th>
+      <th>Exit</th>
+      <th onclick="setSort('result')">Result ↕</th>
+      <th onclick="setSort('pnl')">PnL ↕</th>
+      <th onclick="setSort('roi')">ROI ↕</th>
+      <th>Duration</th>
+      <th>Action</th>
     </tr>
     </thead>
     <tbody></tbody>
@@ -690,6 +690,7 @@ function render(){
        <td>${t.exitPrice||'-'}</td>
        <td>${t.result||'-'}</td>
        <td>${t.pnl||'-'}</td>
+       <td>${(t.roi !== undefined && t.roi !== null) ? (t.roi.toFixed(2) + ' R') : '-'}</td>
        <td>${formatDuration(t.entryDateTime, t.exitDateTime)}</td>
        <td>
           <button class="btn-outline" style="padding:4px 8px; margin-right:6px" onclick="viewTradeDetails('${t.id}')">Details</button>
@@ -778,6 +779,20 @@ document.getElementById("tradeForm").onsubmit=e=>{
     strategy: document.getElementById('strategy').value,
     notes: document.getElementById('notes').value
   };
+
+  // compute ROI as reward/risk = |exit - entry| / |stop - entry|
+  try {
+    const e = parseFloat(record.entryPrice);
+    const x = parseFloat(record.exitPrice);
+    const s = parseFloat(record.sl);
+    if (!isNaN(e) && !isNaN(x) && !isNaN(s)) {
+      const stopDist = Math.abs(e - s);
+      const exitDist = Math.abs(x - e);
+      record.roi = (stopDist === 0) ? null : parseFloat((exitDist / stopDist).toFixed(2));
+    } else {
+      record.roi = null;
+    }
+  } catch (err) { record.roi = null; }
 
   const editingId = document.getElementById('editId').value;
   if(editingId){
@@ -873,6 +888,7 @@ function viewTradeDetails(id){
     <div><strong>Lot Size:</strong> ${t.lot||'-'}</div>
     <div><strong>Risk ($):</strong> ${t.risk||'-'}</div>
     <div><strong>PnL ($):</strong> <span style="color: ${t.pnl >= 0 ? 'var(--win)' : 'var(--loss)'}; font-weight: bold;">${t.pnl||'-'}</span></div>
+    <div><strong>ROI:</strong> ${t.roi !== undefined && t.roi !== null ? (t.roi.toFixed(2) + ' R') : '-'}</div>
     <div><strong>Equity Before:</strong> ${t.equityBefore||'-'}</div>
     <div><strong>Equity After:</strong> ${t.equityAfter||'-'}</div>
   `;
