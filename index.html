@@ -197,6 +197,7 @@ td{
 
 .row-win { background-color: rgba(5, 150, 105, 0.2) !important; border-left: 4px solid var(--win); }
 .row-loss { background-color: rgba(220, 38, 38, 0.2) !important; border-left: 4px solid var(--loss); }
+.row-active { background-color: rgba(245, 158, 11, 0.15) !important; border-left: 4px solid #f59e0b; }
 
 .actions-top{
   display:flex;
@@ -237,11 +238,13 @@ td{
         <input type="text" id="searchInput" placeholder="Search..." onkeyup="render()">
     </div>
     <div class="filter-group">
-        <label>Result</label>
+        <label>Result / Status</label>
         <select id="filterResult" onchange="render()">
             <option value="all">All</option>
             <option value="Win">Win</option>
             <option value="Loss">Loss</option>
+            <option value="Breakeven">Breakeven</option>
+            <option value="Incomplete">Incomplete</option>
         </select>
     </div>
     <div class="filter-group">
@@ -266,6 +269,7 @@ td{
       <th>Entry</th>
       <th>Exit</th>
       <th onclick="setSort('result')">Result ↕</th>
+      <th>Status</th>
       <th onclick="setSort('pnl')">PnL ↕</th>
       <th onclick="setSort('roi')">ROI ↕</th>
       <th>Duration</th>
@@ -395,7 +399,7 @@ td{
     </div>
     <div>
         <label>Exit Price</label>
-        <input type="number" step="any" id="exitPrice" name="exitPrice" required>
+        <input type="number" step="any" id="exitPrice" name="exitPrice">
     </div>
     <div>
       <label>Take Profit</label>
@@ -406,11 +410,19 @@ td{
         <input type="number" step="any" id="sl" name="sl">
     </div>
     <div>
+        <label>Trade Status</label>
+        <select id="status" name="status" required>
+          <option value="Closed">Closed</option>
+          <option value="Open">Open / Active</option>
+        </select>
+    </div>
+    <div>
         <label>Result</label>
         <select id="result" name="result" required>
         <option value="Win">Win</option>
         <option value="Loss">Loss</option>
         <option value="Breakeven">Breakeven</option>
+        <option value="Incomplete">Incomplete</option>
         </select>
     </div>
     <div>
@@ -439,7 +451,7 @@ td{
     </div>
     <div>
         <label>Exit Date & Time</label>
-        <input type="datetime-local" required id="exitDateTime" name="exitDateTime">
+        <input type="datetime-local" id="exitDateTime" name="exitDateTime">
     </div>
 </div>
 
@@ -600,6 +612,25 @@ market.onchange=()=> {
   if(prev) instrument.value = prev;
 };
 
+const statusControl = document.getElementById('status');
+function updateStatusControls() {
+  const status = statusControl ? statusControl.value : 'Closed';
+  const exitPriceEl = document.getElementById('exitPrice');
+  const exitDateEl = document.getElementById('exitDateTime');
+  const resultEl = document.getElementById('result');
+  if (!exitPriceEl || !exitDateEl || !resultEl) return;
+  if (status === 'Open') {
+    exitPriceEl.disabled = true;
+    exitDateEl.disabled = true;
+    resultEl.value = 'Incomplete';
+  } else {
+    exitPriceEl.disabled = false;
+    exitDateEl.disabled = false;
+    if (resultEl.value === 'Incomplete') resultEl.value = 'Breakeven';
+  }
+}
+if (statusControl) statusControl.onchange = updateStatusControls;
+
 let trades=JSON.parse(localStorage.getItem("journalTrades"))||[];
 let sortKey = 'date';
 let sortAsc = false;
@@ -655,7 +686,7 @@ function render(){
 
   let filtered = trades.filter(t => {
       const matchSearch = (t.instrument||'').toLowerCase().includes(searchTerm) || (t.broker||'').toLowerCase().includes(searchTerm);
-      const matchResult = filterResult === "all" || t.result === filterResult;
+      const matchResult = filterResult === "all" || t.result === filterResult || t.status === filterResult;
       const tradeDate = t.entryDateTime ? new Date(t.entryDateTime).setHours(0,0,0,0) : (t.date ? new Date(t.date).setHours(0,0,0,0) : null);
       const start = startDate ? new Date(startDate).setHours(0,0,0,0) : null;
       const end = endDate ? new Date(endDate).setHours(0,0,0,0) : null;
@@ -679,7 +710,13 @@ function render(){
 
   filtered.forEach((t, idx)=>{
     let r=document.createElement("tr");
-    r.className = t.result === "Win" ? "row-win" : "row-loss";
+        if (t.status === "Open" || t.result === "Incomplete") {
+      r.className = "row-active";
+    } else if (t.result === "Win") {
+      r.className = "row-win";
+    } else if (t.result === "Loss") {
+      r.className = "row-loss";
+    }
     const entryDisplay = t.entryDateTime ? new Date(t.entryDateTime).toLocaleString() : (t.date ? new Date(t.date).toLocaleString() : '-');
     r.innerHTML=
       `<td>${t.displayId}</td>
@@ -690,6 +727,7 @@ function render(){
        <td>${t.entryPrice||'-'}</td>
        <td>${t.exitPrice||'-'}</td>
        <td>${t.result||'-'}</td>
+       <td>${t.status||'-'}</td>
        <td>${t.pnl||'-'}</td>
        <td>${(t.roi !== undefined && t.roi !== null) ? (t.roi.toFixed(2) + ' R') : '-'}</td>
        <td>${formatDuration(t.entryDateTime, t.exitDateTime)}</td>
@@ -761,6 +799,8 @@ document.getElementById("tradeForm").onsubmit=e=>{
     exitPrice: document.getElementById('exitPrice').value,
     takeProfit: document.getElementById('takeProfit').value,
     sl: document.getElementById('sl').value,
+    status: document.getElementById('status').value,
+    status: document.getElementById('status').value,
     result: document.getElementById('result').value,
     lot: document.getElementById('lot').value,
     risk: document.getElementById('risk').value,
@@ -786,7 +826,12 @@ document.getElementById("tradeForm").onsubmit=e=>{
     const e = parseFloat(record.entryPrice);
     const x = parseFloat(record.exitPrice);
     const s = parseFloat(record.sl);
-    if (!isNaN(e) && !isNaN(x) && !isNaN(s)) {
+    if (record.status === 'Open') {
+      record.result = 'Incomplete';
+      record.exitPrice = '';
+      record.exitDateTime = '';
+    }
+    if (!isNaN(e) && !isNaN(x) && !isNaN(s) && record.status !== 'Open') {
       const stopDist = Math.abs(e - s);
       const exitDist = Math.abs(x - e);
       record.roi = (stopDist === 0) ? null : parseFloat((exitDist / stopDist).toFixed(2));
@@ -831,6 +876,7 @@ function editTrade(id){
   document.getElementById('takeProfit').value = t.takeProfit || '';
   document.getElementById('sl').value = t.sl || '';
   document.getElementById('result').value = t.result || '';
+  document.getElementById('status').value = t.status || 'Closed';
   document.getElementById('lot').value = t.lot || '';
   document.getElementById('risk').value = t.risk || '';
   document.getElementById('pnl').value = t.pnl || '';
@@ -841,6 +887,7 @@ function editTrade(id){
   document.getElementById('marketDirection').value = t.marketDirection || '';
   document.getElementById('marketCondition').value = t.marketCondition || '';
   document.getElementById('executionTF').value = t.executionTF || '';
+  updateStatusControls();
   // checkboxes
   const setChecks = (groupId, valuesStr) => {
     const vals = (valuesStr||'').split(',').map(s=>s.trim()).filter(Boolean);
@@ -885,7 +932,8 @@ function viewTradeDetails(id){
     <div><strong>Exit Price:</strong> ${t.exitPrice||'-'}</div>
     <div><strong>Take Profit:</strong> ${t.takeProfit||'-'}</div>
     <div><strong>Stop Loss:</strong> ${t.sl||'-'}</div>
-    <div><strong>Result:</strong> <span style="padding: 2px 8px; border-radius: 4px; background: ${t.result === 'Win' ? 'var(--win)' : 'var(--loss)'}; color: white;">${t.result||'-'}</span></div>
+    <div><strong>Status:</strong> <span style="padding: 2px 8px; border-radius: 4px; background: ${t.status === 'Open' ? '#f59e0b' : 'var(--accent)'}; color: white;">${t.status||'-'}</span></div>
+    <div><strong>Result:</strong> <span style="padding: 2px 8px; border-radius: 4px; background: ${t.result === 'Win' ? 'var(--win)' : t.result === 'Loss' ? 'var(--loss)' : t.result === 'Incomplete' ? '#f59e0b' : 'var(--accent)'}; color: white;">${t.result||'-'}</span></div>
     <div><strong>Lot Size:</strong> ${t.lot||'-'}</div>
     <div><strong>Risk ($):</strong> ${t.risk||'-'}</div>
     <div><strong>PnL ($):</strong> <span style="color: ${t.pnl >= 0 ? 'var(--win)' : 'var(--loss)'}; font-weight: bold;">${t.pnl||'-'}</span></div>
@@ -962,7 +1010,7 @@ function deleteTradeFromDetails(){
 }
 
 function exportCSV(){
-  const headers = ["ID","EntryDateTime","ExitDateTime","Broker","Account","Market","Instrument","Direction","EntryPrice","ExitPrice","TakeProfit","SL","Result","Lot","Risk","PnL","EquityBefore","EquityAfter","MarketDirection","MarketCondition","TradeType","ExecutionTF","Strategy","Timeframes","Confluence","Indicators","Psychology","SetupURL","EntryURL","ExitURL","Notes"];
+  const headers = ["ID","EntryDateTime","ExitDateTime","Broker","Account","Market","Instrument","Direction","EntryPrice","ExitPrice","TakeProfit","SL","Status","Result","Lot","Risk","PnL","EquityBefore","EquityAfter","MarketDirection","MarketCondition","TradeType","ExecutionTF","Strategy","Timeframes","Confluence","Indicators","Psychology","SetupURL","EntryURL","ExitURL","Notes"];
   let csv = headers.join(",") + "\n";
     
     trades.forEach(t => {
@@ -979,6 +1027,7 @@ function exportCSV(){
             t.exitPrice||'',
             t.takeProfit||'',
             t.sl||'',
+            t.status||'Closed',
             t.result||'',
             t.lot||'',
             t.risk||'',
@@ -1098,25 +1147,26 @@ function importCSV(event){
                       exitPrice: rowData[9] || '',
                       takeProfit: rowData[10] || '',
                       sl: rowData[11] || '',
-                      result: rowData[12] || '',
-                      lot: rowData[13] || '',
-                      risk: rowData[14] || '',
-                      pnl: rowData[15] || '',
-                      equityBefore: rowData[16] || '',
-                      equityAfter: rowData[17] || '',
-                      marketDirection: rowData[18] || '',
-                      marketCondition: rowData[19] || '',
-                      tradeType: rowData[20] || '',
-                      executionTF: rowData[21] || '',
-                      strategy: rowData[22] || '',
-                      tf: rowData[23] || '',
-                      conf: rowData[24] || '',
-                      ind: rowData[25] || '',
-                      psy: rowData[26] || '',
-                      setupUrl: extractUrls(rowData[27] || ''),
-                      entryUrl: extractUrls(rowData[28] || ''),
-                      exitUrl: extractUrls(rowData[29] || ''),
-                      notes: rowData[30] || ''
+                                        status: rowData[12] || 'Closed',
+                      result: rowData[13] || '',
+                      lot: rowData[14] || '',
+                      risk: rowData[15] || '',
+                      pnl: rowData[16] || '',
+                      equityBefore: rowData[17] || '',
+                      equityAfter: rowData[18] || '',
+                      marketDirection: rowData[19] || '',
+                      marketCondition: rowData[20] || '',
+                      tradeType: rowData[21] || '',
+                      executionTF: rowData[22] || '',
+                      strategy: rowData[23] || '',
+                      tf: rowData[24] || '',
+                      conf: rowData[25] || '',
+                      ind: rowData[26] || '',
+                      psy: rowData[27] || '',
+                      setupUrl: extractUrls(rowData[28] || ''),
+                      entryUrl: extractUrls(rowData[29] || ''),
+                      exitUrl: extractUrls(rowData[30] || ''),
+                      notes: rowData[31] || ''
                     };
                     
                     if (!record.date) {
